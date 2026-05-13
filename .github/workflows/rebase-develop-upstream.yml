@@ -1,0 +1,60 @@
+name: Rebase develop from upstream
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: rebase-develop-upstream
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Rebase onto hoaxisr/awg-manager develop
+        id: rebase
+        env:
+          UPSTREAM_URL: https://github.com/hoaxisr/awg-manager.git
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          sha_before="$(git rev-parse HEAD)"
+
+          git remote add upstream "${UPSTREAM_URL}"
+          git fetch upstream develop
+          git rebase upstream/develop
+
+          sha_after="$(git rev-parse HEAD)"
+
+          if [ "${sha_before}" = "${sha_after}" ]; then
+            echo "updated=false" >> "${GITHUB_OUTPUT}"
+            echo "develop already matched upstream; skipping push and Build."
+            exit 0
+          fi
+
+          echo "updated=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Push develop
+        if: steps.rebase.outputs.updated == 'true'
+        run: git push origin develop --force-with-lease
+
+      - name: Trigger Build workflow
+        if: steps.rebase.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build.yml --repo miuirussia/awg-manager --ref develop
