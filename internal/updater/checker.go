@@ -12,6 +12,7 @@ import (
 	osexec "os/exec"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 
 const (
 	defaultEntwareRepoURL = "http://repo.hoaxisr.ru"
+	defaultReleaseBaseURL = "https://github.com/miuirussia/awg-manager/releases/download/latest"
 	repoTimeout           = 30 * time.Second
 	downloadTimeout       = 5 * time.Minute
 	downloadDir           = "/opt/tmp"
@@ -35,6 +37,9 @@ const (
 // entwareRepoURL is a variable so tests can override it with httptest server URL.
 var entwareRepoURL = defaultEntwareRepoURL
 
+// releaseBaseURL is a variable so tests can override it with httptest server URL.
+var releaseBaseURL = defaultReleaseBaseURL
+
 // channelBaseURL возвращает базовый URL репозитория для канала. develop
 // отдаётся из подкаталога /develop того же сервера.
 func channelBaseURL(channel string) string {
@@ -44,18 +49,9 @@ func channelBaseURL(channel string) string {
 	return entwareRepoURL
 }
 
-// versionComparator выбирает сравнялку версий по каналу: develop учитывает
-// build-revision (+rN), stable — нет (как было).
-func versionComparator(channel string) func(a, b string) int {
-	if channel == channelDevelop {
-		return semver.CompareWithRevision
-	}
-	return semver.Compare
-}
-
-// Check queries the entware repo's Packages.gz for the latest awg-manager
-// version and returns update info including the .ipk download URL if a newer
-// version is available. Uses the stable channel.
+// Check reads the latest stable awg-manager version from the GitHub release
+// VERSION asset and returns update info including the matching .ipk download
+// URL if a newer version is available.
 func Check(ctx context.Context, currentVersion string) *UpdateInfo {
 	return checkWithDownloader(ctx, currentVersion, channelStable, newDefaultDownloader())
 }
@@ -66,18 +62,24 @@ func checkWithDownloader(ctx context.Context, currentVersion, channel string, dl
 		CheckedAt:      time.Now(),
 	}
 
-	cmp := versionComparator(channel)
-	base := channelBaseURL(channel)
+	if channel == channelDevelop {
+		return checkDevelopWithDownloader(ctx, currentVersion, dl, info)
+	}
+	return checkStableWithDownloader(ctx, currentVersion, dl, info)
+}
+
+func checkDevelopWithDownloader(ctx context.Context, currentVersion string, dl Downloader, info *UpdateInfo) *UpdateInfo {
+	base := channelBaseURL(channelDevelop)
 	archDir := archSuffixToRepoDir(archSuffix())
 	pkgsURL := fmt.Sprintf("%s/%s/Packages.gz", base, archDir)
 
-	pkg, err := fetchLatestPackageWithDownloader(ctx, dl, pkgsURL, pkgName, cmp)
+	pkg, err := fetchLatestPackageWithDownloader(ctx, dl, pkgsURL, pkgName, semver.CompareWithRevision)
 	if err != nil {
 		info.Error = fmt.Sprintf("entware repo: %s", err)
 		return info
 	}
 
-	if cmp(currentVersion, pkg.Version) >= 0 {
+	if semver.CompareWithRevision(currentVersion, pkg.Version) >= 0 {
 		return info
 	}
 
@@ -111,6 +113,93 @@ if [ "$rc" = "0" ] && [ -s %[2]s ] && dd if=%[2]s bs=4 count=1 2>/dev/null | gre
 else
 	logger -t awg-manager -p daemon.err "upgrade FAILED: opkg rc=$rc or corrupt binary %[2]s; ipk kept: %[1]s"
 fi`, ipkPath, binPath)
+}
+
+func checkStableWithDownloader(ctx context.Context, currentVersion string, dl Downloader, info *UpdateInfo) *UpdateInfo {
+	latestVersion, err := fetchLatestVersionWithDownloader(ctx, dl, releaseAssetURL("VERSION"))
+	if err != nil {
+		info.Error = fmt.Sprintf("release version: %s", err)
+		return info
+	}
+
+	if compareUpdateVersions(currentVersion, latestVersion) >= 0 {
+		return info
+	}
+
+	info.Available = true
+	info.LatestVersion = latestVersion
+	info.DownloadURL = releaseAssetURL(fmt.Sprintf("awg-manager_%s_%s-kn.ipk", latestVersion, archSuffix()))
+	return info
+}
+
+// fetchLatestVersion downloads the release VERSION asset and returns its
+// trimmed contents.
+func fetchLatestVersionWithDownloader(ctx context.Context, dl Downloader, versionURL string) (string, error) {
+	if dl == nil {
+		dl = newDefaultDownloader()
+	}
+	body, _, err := dl.ReadAll(ctx, downloader.Request{
+		Purpose:      "awgm-update-check",
+		URL:          versionURL,
+		Method:       http.MethodGet,
+		Timeout:      repoTimeout,
+		MaxBodyBytes: releaseVersionMaxBytes,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	version := strings.TrimSpace(string(body))
+	if version == "" {
+		return "", fmt.Errorf("empty VERSION")
+	}
+	return version, nil
+}
+
+func releaseAssetURL(filename string) string {
+	return strings.TrimRight(releaseBaseURL, "/") + "/" + filename
+}
+
+func compareUpdateVersions(a, b string) int {
+	baseA, revA, hasRevA := splitBuildRevision(a)
+	baseB, revB, hasRevB := splitBuildRevision(b)
+	if cmp := semver.Compare(baseA, baseB); cmp != 0 {
+		return cmp
+	}
+	if hasRevA && hasRevB {
+		if revA < revB {
+			return -1
+		}
+		if revA > revB {
+			return 1
+		}
+		return 0
+	}
+	if hasRevA {
+		return 1
+	}
+	if hasRevB {
+		return -1
+	}
+	return 0
+}
+
+func splitBuildRevision(version string) (base string, rev int, ok bool) {
+	base, suffix, found := strings.Cut(version, "+r")
+	if !found || suffix == "" {
+		return version, 0, false
+	}
+	rev, err := strconv.Atoi(suffix)
+	if err != nil {
+		return version, 0, false
+	}
+	return base, rev, true
+}
+
+// Upgrade downloads the IPK from downloadURL and launches opkg install in a
+// detached process.
+func Upgrade(ctx context.Context, downloadURL string) error {
+	return upgradeWithDownloader(ctx, downloadURL, "", newDefaultDownloader())
 }
 
 var startDetachedUpgrade = func(ipkPath string) error {
