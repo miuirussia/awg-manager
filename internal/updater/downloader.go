@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	packagesMaxBytes  int64 = 2 << 20
-	changelogMaxBytes int64 = 512 << 10
-	ipkMaxBytes       int64 = 64 << 20
+	packagesMaxBytes       int64 = 2 << 20
+	releaseVersionMaxBytes int64 = 512
+	changelogMaxBytes      int64 = 512 << 10
+	ipkMaxBytes            int64 = 64 << 20
 )
 
 type Downloader interface {

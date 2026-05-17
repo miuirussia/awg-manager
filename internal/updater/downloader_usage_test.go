@@ -68,14 +68,11 @@ func (f *fakeDownloader) DownloadFile(ctx context.Context, req downloader.FileRe
 }
 
 func TestCheckWithDownloader_UsesDownloaderRequest(t *testing.T) {
-	arch := archSuffix()
-	ipkName := "awg-manager_9.9.9_" + arch + "-kn.ipk"
-	packages := "Package: awg-manager\nVersion: 9.9.9\nFilename: " + ipkName + "\n"
 	var seen downloader.Request
 	dl := &fakeDownloader{
 		readAllFn: func(_ context.Context, req downloader.Request) ([]byte, downloader.ResponseMeta, error) {
 			seen = req
-			return gzipBytes(t, packages), downloader.ResponseMeta{StatusCode: http.StatusOK}, nil
+			return []byte("9.9.9+r5\n"), downloader.ResponseMeta{StatusCode: http.StatusOK}, nil
 		},
 	}
 
@@ -89,8 +86,8 @@ func TestCheckWithDownloader_UsesDownloaderRequest(t *testing.T) {
 	if seen.Timeout != repoTimeout {
 		t.Fatalf("timeout = %s, want %s", seen.Timeout, repoTimeout)
 	}
-	if seen.MaxBodyBytes != packagesMaxBytes {
-		t.Fatalf("max body bytes = %d, want %d", seen.MaxBodyBytes, packagesMaxBytes)
+	if seen.MaxBodyBytes != releaseVersionMaxBytes {
+		t.Fatalf("max body bytes = %d, want %d", seen.MaxBodyBytes, releaseVersionMaxBytes)
 	}
 }
 
