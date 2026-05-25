@@ -12,6 +12,11 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
+  SINGBOX_VERSION: 1.14.0-alpha.25
+  SINGBOX_REF: v1.14.0-alpha.25
+
 jobs:
   frontend:
     name: Build frontend
