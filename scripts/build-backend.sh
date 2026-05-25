@@ -11,6 +11,11 @@ VERSION="${VERSION:-$(cat "$PROJECT_ROOT/VERSION" 2>/dev/null || echo "dev")}"
 # Set by build-ipk.sh; defaults to empty for direct invocations.
 ENTWARE_ARCH="${ENTWARE_ARCH:-}"
 
+# Base URL for awg-manager self-update assets. Must be supplied by the build
+# environment so release forks/mirrors do not require code changes.
+: "${AWG_RELEASE_BASE_URL:?AWG_RELEASE_BASE_URL must be set, e.g. https://github.com/hoaxisr/awg-manager/releases/download/latest}"
+LD_FLAGS="-s -w -X main.version=${VERSION} -X main.buildArch=${ENTWARE_ARCH} -X github.com/hoaxisr/awg-manager/internal/updater.releaseBaseURL=${AWG_RELEASE_BASE_URL}"
+
 # Architecture (default: mipsle for MT7621)
 ARCH="${1:-mipsle}"
 
@@ -51,13 +56,13 @@ case "$ARCH" in
         export STAGING_DIR="$(dirname "$(dirname "$(dirname "$CC")")")"
         GOOS=linux GOARCH="$GO_TARGET" GOMIPS=softfloat CGO_ENABLED=1 CC="$CC" \
             CGO_LDFLAGS="-ldl -Wl,--dynamic-linker=/opt/lib/ld.so.1 -Wl,-rpath,/opt/lib" \
-            $GO_CMD build -buildvcs=false -ldflags="-s -w -linkmode=external -X main.version=${VERSION} -X main.buildArch=${ENTWARE_ARCH}" \
+            $GO_CMD build -buildvcs=false -ldflags="$LD_FLAGS -linkmode=external" \
             -tags embed_frontend,netgo,osusergo \
             -o build/bin/awg-manager ./cmd/awg-manager
         ;;
     arm64|aarch64)
         GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
-            $GO_CMD build -ldflags="-s -w -X main.version=${VERSION} -X main.buildArch=${ENTWARE_ARCH}" \
+            $GO_CMD build -ldflags="$LD_FLAGS" \
             -tags embed_frontend \
             -o build/bin/awg-manager ./cmd/awg-manager
         ;;
