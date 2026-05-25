@@ -22,7 +22,6 @@ import (
 
 const (
 	defaultEntwareRepoURL = "http://repo.hoaxisr.ru"
-	defaultReleaseBaseURL = "https://github.com/miuirussia/awg-manager/releases/download/latest"
 	repoTimeout           = 30 * time.Second
 	downloadTimeout       = 5 * time.Minute
 	downloadDir           = "/opt/tmp"
@@ -38,7 +37,7 @@ const (
 var entwareRepoURL = defaultEntwareRepoURL
 
 // releaseBaseURL is a variable so tests can override it with httptest server URL.
-var releaseBaseURL = defaultReleaseBaseURL
+var releaseBaseURL = ""
 
 // channelBaseURL возвращает базовый URL репозитория для канала. develop
 // отдаётся из подкаталога /develop того же сервера.
