@@ -66,7 +66,6 @@ require_command() {
 require_command git
 require_command file
 require_command python3
-require_command gofmt
 require_command "$SINGBOX_GO"
 
 cd "$PROJECT_ROOT"
