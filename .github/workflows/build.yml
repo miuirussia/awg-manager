@@ -14,8 +14,8 @@ permissions:
 
 env:
   AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
-  SINGBOX_VERSION: 1.14.0-alpha.25
-  SINGBOX_REF: v1.14.0-alpha.25
+  SINGBOX_VERSION: 1.14.0-testing
+  SINGBOX_REF: testing
 
 jobs:
   frontend:
@@ -119,6 +119,20 @@ jobs:
             git ca-certificates gnupg curl file xz-utils unzip zip python3 python3-requests procps \
             build-essential pkg-config
 
+      - name: Resolve sing-box ref
+        id: singbox-ref
+        run: |
+          set -euo pipefail
+
+          sha="$(git ls-remote https://github.com/sagernet/sing-box.git "$SINGBOX_REF" | awk 'NR == 1 { print $1 }')"
+          if [[ -z "$sha" ]]; then
+            echo "Unable to resolve SINGBOX_REF=$SINGBOX_REF" >&2
+            exit 1
+          fi
+
+          echo "Resolved SINGBOX_REF=$SINGBOX_REF to $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       - name: Restore sing-box build artifacts
         id: singbox-cache
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
@@ -128,7 +142,7 @@ jobs:
           # (per-arch URL/SHA256/Size) regenerated unconditionally from the
           # binary by the "Refresh sing-box embedded metadata" step below, so it
           # is always fresh whether the binary was rebuilt or restored.
-          key: sing-box-${{ matrix.arch }}-${{ env.SINGBOX_VERSION }}-${{ env.SINGBOX_REF }}-repo-${{ hashFiles('scripts/build-singbox.sh', 'scripts/patches/**') }}
+          key: sing-box-${{ matrix.arch }}-${{ env.SINGBOX_VERSION }}-${{ env.SINGBOX_REF }}-${{ steps.singbox-ref.outputs.sha }}-repo-${{ hashFiles('scripts/build-singbox.sh', 'scripts/patches/**') }}
           path: |
             dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}
             dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}.sha256
@@ -145,7 +159,7 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
         with:
           # Key + path MUST match the restore step above (see its comment).
-          key: sing-box-${{ matrix.arch }}-${{ env.SINGBOX_VERSION }}-${{ env.SINGBOX_REF }}-repo-${{ hashFiles('scripts/build-singbox.sh', 'scripts/patches/**') }}
+          key: sing-box-${{ matrix.arch }}-${{ env.SINGBOX_VERSION }}-${{ env.SINGBOX_REF }}-${{ steps.singbox-ref.outputs.sha }}-repo-${{ hashFiles('scripts/build-singbox.sh', 'scripts/patches/**') }}
           path: |
             dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}
             dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}.sha256
@@ -154,12 +168,10 @@ jobs:
         # Unconditional: on a cache hit "Build sing-box" is skipped, but
         # embedded.go must still carry the correct URL/SHA256/Size for the
         # restored binary so the router updater downloads the right file.
-        env:
-          RELEASE_BASE_URL: http://repo.hoaxisr.ru/develop/singbox/${{ env.SINGBOX_VERSION }}
         run: |
           set -euo pipefail
 
-          ./scripts/update-singbox-embedded.sh "${{ matrix.arch }}" "$SINGBOX_VERSION"
+          RELEASE_BASE_URL="$AWG_RELEASE_BASE_URL" ./scripts/update-singbox-embedded.sh "${{ matrix.arch }}" "$SINGBOX_VERSION"
 
       - name: Build
         id: build
