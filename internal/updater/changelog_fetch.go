@@ -11,14 +11,14 @@ import (
 	"github.com/hoaxisr/awg-manager/internal/downloader"
 )
 
-// changelogURLForChannel возвращает URL CHANGELOG.md для канала. develop
-// отдаётся из /develop. База берётся из entwareRepoURL (переопределяема в
-// тестах), чтобы остаться согласованной с Packages.gz.
+// changelogURLForChannel возвращает URL CHANGELOG.md для канала. Stable
+// берётся из release asset, заданного сборкой; develop остаётся рядом с
+// Packages.gz в Entware repo.
 func changelogURLForChannel(channel string) string {
 	if channel == channelDevelop {
 		return entwareRepoURL + "/develop/CHANGELOG.md"
 	}
-	return entwareRepoURL + "/CHANGELOG.md"
+	return changelogURL
 }
 
 // changelogFetcher pulls the monolithic CHANGELOG.md, parses it, and

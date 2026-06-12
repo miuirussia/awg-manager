@@ -14,6 +14,7 @@ permissions:
 
 env:
   AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
+  AWG_CHANGELOG_URL: https://github.com/miuirussia/awg-manager/releases/download/latest/CHANGELOG.md
   SINGBOX_VERSION: 1.14.0-testing
   SINGBOX_REF: testing
 

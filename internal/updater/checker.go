@@ -22,6 +22,7 @@ import (
 
 const (
 	defaultEntwareRepoURL = "http://repo.hoaxisr.ru"
+	defaultChangelogURL   = "http://repo.hoaxisr.ru"
 	repoTimeout           = 30 * time.Second
 	downloadTimeout       = 5 * time.Minute
 	downloadDir           = "/opt/tmp"
@@ -38,6 +39,9 @@ var entwareRepoURL = defaultEntwareRepoURL
 
 // releaseBaseURL is a variable so tests can override it with httptest server URL.
 var releaseBaseURL = ""
+
+// changelogURL is set via ldflags at build time.
+var changelogURL = defaultChangelogURL
 
 // channelBaseURL возвращает базовый URL репозитория для канала. develop
 // отдаётся из подкаталога /develop того же сервера.
