@@ -333,18 +333,15 @@ func TestRunAutoInstallSlot_SingboxNoOp_NotJournaledAsUpdate(t *testing.T) {
 // All the tests above use failingDownloader, so info.Available is always
 // false and the manager branch always falls through to sing-box. These two
 // exercise the manager branch itself with a downloader stubbed to report an
-// available update via the real Packages.gz parsing path (checkWithDownloader
-// / CheckNow are not mockable through an interface, so the fake plugs in one
-// level down at the Downloader).
+// available update via the stable-channel VERSION asset (CheckNow is not
+// mockable through an interface, so the fake plugs in one level down at the
+// Downloader).
 
 func managerUpdateDownloader(t *testing.T, newVersion string, downloadFileFn func(context.Context, downloader.FileRequest) (downloader.FileResult, error)) *fakeDownloader {
 	t.Helper()
-	arch := archSuffix()
-	ipkName := "awg-manager_" + newVersion + "_" + arch + "-kn.ipk"
-	packages := "Package: awg-manager\nVersion: " + newVersion + "\nFilename: " + ipkName + "\n"
 	return &fakeDownloader{
 		readAllFn: func(_ context.Context, _ downloader.Request) ([]byte, downloader.ResponseMeta, error) {
-			return gzipBytes(t, packages), downloader.ResponseMeta{}, nil
+			return []byte(newVersion + "\n"), downloader.ResponseMeta{}, nil
 		},
 		downloadFileFn: downloadFileFn,
 	}
