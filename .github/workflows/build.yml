@@ -192,6 +192,8 @@ jobs:
           name: result-${{ matrix.arch }}
           path: |
             dist/awg-manager_*_${{ matrix.arch }}-kn.ipk
+            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}
+            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}.sha256
             dist/VERSION
           if-no-files-found: error
 
@@ -371,7 +373,7 @@ jobs:
           set -euo pipefail
 
           shopt -s nullglob
-          files=(./dist/awg-manager_* ./dist/VERSION ./dist/CHANGELOG.md ./dist/RELEASED_SHA)
+          files=(./dist/awg-manager_* ./dist/sing-box-* ./dist/VERSION ./dist/CHANGELOG.md ./dist/RELEASED_SHA)
 
           if (( ${#files[@]} == 0 )); then
             echo "No release files found in ./dist"
