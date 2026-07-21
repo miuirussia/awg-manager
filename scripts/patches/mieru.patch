@@ -360,23 +360,23 @@ index d66b98a..1fd8bf7 100644
  	github.com/creack/pty v1.1.24
  	github.com/cretz/bine v0.2.0
  	github.com/database64128/tfo-go/v2 v2.3.2
-+	github.com/enfein/mieru/v3 v3.33.0
++	github.com/enfein/mieru/v3 v3.34.1
  	github.com/go-chi/chi/v5 v5.2.5
  	github.com/go-chi/render v1.0.3
  	github.com/godbus/dbus/v5 v5.2.2
 diff --git a/go.sum b/go.sum
-index b37b88d..c9ed684 100644
+index d83b2a9..caea8aa 100644
 --- a/go.sum
 +++ b/go.sum
-@@ -58,6 +58,8 @@ github.com/dnaeon/go-vcr v1.2.0 h1:zHCHvJYTMh1N7xnV7zf1m1GPBF9Ad0Jk/whtQ1663qI=
+@@ -71,6 +71,8 @@ github.com/dnaeon/go-vcr v1.2.0 h1:zHCHvJYTMh1N7xnV7zf1m1GPBF9Ad0Jk/whtQ1663qI=
  github.com/dnaeon/go-vcr v1.2.0/go.mod h1:R4UdLID7HZT3taECzJs4YgbbH6PIGXB6W/sc5OLb6RQ=
  github.com/ebitengine/purego v0.10.0 h1:QIw4xfpWT6GWTzaW5XEKy3HXoqrJGx1ijYHzTF0/ISU=
  github.com/ebitengine/purego v0.10.0/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
-+github.com/enfein/mieru/v3 v3.33.0 h1:hv2jK8nqYHwpSG86U2rpZR2I8Aff1/J3ifRmd9NBbFc=
-+github.com/enfein/mieru/v3 v3.33.0/go.mod h1:zJBUCsi5rxyvHM8fjFf+GLaEl4OEjjBXr1s5F6Qd3hM=
- github.com/florianl/go-nfqueue/v2 v2.0.2 h1:FL5lQTeetgpCvac1TRwSfgaXUn0YSO7WzGvWNIp3JPE=
- github.com/florianl/go-nfqueue/v2 v2.0.2/go.mod h1:VA09+iPOT43OMoCKNfXHyzujQUty2xmzyCRkBOlmabc=
- github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
++github.com/enfein/mieru/v3 v3.34.1 h1:V5RMMtFfWhSHIMyxsqgmsXyDXP+6H4V9azwLTeQVTz4=
++github.com/enfein/mieru/v3 v3.34.1/go.mod h1:zJBUCsi5rxyvHM8fjFf+GLaEl4OEjjBXr1s5F6Qd3hM=
+ github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
+ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
+ github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 diff --git a/include/registry.go b/include/registry.go
 index 6ea32e1..511511a 100644
 --- a/include/registry.go
