@@ -1,8 +1,8 @@
-diff --git c/common/xray/buf/buffer.go i/common/xray/buf/buffer.go
+diff --git a/common/xray/buf/buffer.go b/common/xray/buf/buffer.go
 new file mode 100644
-index 0000000..38bbc9c
+index 00000000..38bbc9c4
 --- /dev/null
-+++ i/common/xray/buf/buffer.go
++++ b/common/xray/buf/buffer.go
 @@ -0,0 +1,348 @@
 +package buf
 +
@@ -352,11 +352,11 @@ index 0000000..38bbc9c
 +func (b *Buffer) String() string {
 +	return string(b.Bytes())
 +}
-diff --git c/common/xray/buf/copy.go i/common/xray/buf/copy.go
+diff --git a/common/xray/buf/copy.go b/common/xray/buf/copy.go
 new file mode 100644
-index 0000000..efab0e1
+index 00000000..efab0e17
 --- /dev/null
-+++ i/common/xray/buf/copy.go
++++ b/common/xray/buf/copy.go
 @@ -0,0 +1,124 @@
 +package buf
 +
@@ -482,11 +482,11 @@ index 0000000..efab0e1
 +	}
 +	return writer.WriteMultiBuffer(mb)
 +}
-diff --git c/common/xray/buf/io.go i/common/xray/buf/io.go
+diff --git a/common/xray/buf/io.go b/common/xray/buf/io.go
 new file mode 100644
-index 0000000..5b7826e
+index 00000000..5b7826e0
 --- /dev/null
-+++ i/common/xray/buf/io.go
++++ b/common/xray/buf/io.go
 @@ -0,0 +1,127 @@
 +package buf
 +
@@ -615,11 +615,11 @@ index 0000000..5b7826e
 +		counter: counter,
 +	}
 +}
-diff --git c/common/xray/buf/multi_buffer.go i/common/xray/buf/multi_buffer.go
+diff --git a/common/xray/buf/multi_buffer.go b/common/xray/buf/multi_buffer.go
 new file mode 100644
-index 0000000..8fe09c8
+index 00000000..8fe09c81
 --- /dev/null
-+++ i/common/xray/buf/multi_buffer.go
++++ b/common/xray/buf/multi_buffer.go
 @@ -0,0 +1,310 @@
 +package buf
 +
@@ -931,11 +931,11 @@ index 0000000..8fe09c8
 +	c.MultiBuffer = ReleaseMulti(c.MultiBuffer)
 +	return nil
 +}
-diff --git c/common/xray/buf/override.go i/common/xray/buf/override.go
+diff --git a/common/xray/buf/override.go b/common/xray/buf/override.go
 new file mode 100644
-index 0000000..2032854
+index 00000000..2032854f
 --- /dev/null
-+++ i/common/xray/buf/override.go
++++ b/common/xray/buf/override.go
 @@ -0,0 +1,38 @@
 +package buf
 +
@@ -975,11 +975,11 @@ index 0000000..2032854
 +	}
 +	return w.Writer.WriteMultiBuffer(mb)
 +}
-diff --git c/common/xray/buf/reader.go i/common/xray/buf/reader.go
+diff --git a/common/xray/buf/reader.go b/common/xray/buf/reader.go
 new file mode 100644
-index 0000000..17b2e49
+index 00000000..17b2e491
 --- /dev/null
-+++ i/common/xray/buf/reader.go
++++ b/common/xray/buf/reader.go
 @@ -0,0 +1,175 @@
 +package buf
 +
@@ -1156,11 +1156,11 @@ index 0000000..17b2e49
 +	}
 +	return MultiBuffer{b}, nil
 +}
-diff --git c/common/xray/buf/writer.go i/common/xray/buf/writer.go
+diff --git a/common/xray/buf/writer.go b/common/xray/buf/writer.go
 new file mode 100644
-index 0000000..c76316c
+index 00000000..c76316c5
 --- /dev/null
-+++ i/common/xray/buf/writer.go
++++ b/common/xray/buf/writer.go
 @@ -0,0 +1,284 @@
 +package buf
 +
@@ -1446,11 +1446,11 @@ index 0000000..c76316c
 +	// DiscardBytes is an io.Writer that swallows all contents written in.
 +	DiscardBytes io.Writer = noOpWriter(0)
 +)
-diff --git c/common/xray/bytespool/pool.go i/common/xray/bytespool/pool.go
+diff --git a/common/xray/bytespool/pool.go b/common/xray/bytespool/pool.go
 new file mode 100644
-index 0000000..6f632d5
+index 00000000..6f632d52
 --- /dev/null
-+++ i/common/xray/bytespool/pool.go
++++ b/common/xray/bytespool/pool.go
 @@ -0,0 +1,72 @@
 +package bytespool
 +
@@ -1524,11 +1524,11 @@ index 0000000..6f632d5
 +		}
 +	}
 +}
-diff --git c/common/xray/common.go i/common/xray/common.go
+diff --git a/common/xray/common.go b/common/xray/common.go
 new file mode 100644
-index 0000000..266f57e
+index 00000000..266f57ef
 --- /dev/null
-+++ i/common/xray/common.go
++++ b/common/xray/common.go
 @@ -0,0 +1,32 @@
 +package common
 +
@@ -1562,11 +1562,11 @@ index 0000000..266f57e
 +	}
 +	return nil
 +}
-diff --git c/common/xray/cpuid/cpuid.go i/common/xray/cpuid/cpuid.go
+diff --git a/common/xray/cpuid/cpuid.go b/common/xray/cpuid/cpuid.go
 new file mode 100644
-index 0000000..60938fe
+index 00000000..60938fe3
 --- /dev/null
-+++ i/common/xray/cpuid/cpuid.go
++++ b/common/xray/cpuid/cpuid.go
 @@ -0,0 +1,18 @@
 +package cpuid
 +
@@ -1586,11 +1586,11 @@ index 0000000..60938fe
 +	// HasAESGCM indicates whether the CPU has AES-GCM hardware acceleration.
 +	HasAESGCM = hasGCMAsmAMD64 || hasGCMAsmARM64 || hasGCMAsmS390X || hasGCMAsmPPC64
 +)
-diff --git c/common/xray/crypto/crypto.go i/common/xray/crypto/crypto.go
+diff --git a/common/xray/crypto/crypto.go b/common/xray/crypto/crypto.go
 new file mode 100644
-index 0000000..4356d41
+index 00000000..4356d412
 --- /dev/null
-+++ i/common/xray/crypto/crypto.go
++++ b/common/xray/crypto/crypto.go
 @@ -0,0 +1,17 @@
 +package crypto
 +
@@ -1609,11 +1609,11 @@ index 0000000..4356d41
 +	bigInt, _ := rand.Int(rand.Reader, big.NewInt(to-from))
 +	return from + bigInt.Int64()
 +}
-diff --git c/common/xray/errors/errors.go i/common/xray/errors/errors.go
+diff --git a/common/xray/errors/errors.go b/common/xray/errors/errors.go
 new file mode 100644
-index 0000000..54af7cb
+index 00000000..54af7cbe
 --- /dev/null
-+++ i/common/xray/errors/errors.go
++++ b/common/xray/errors/errors.go
 @@ -0,0 +1,25 @@
 +package errors
 +
@@ -1640,11 +1640,11 @@ index 0000000..54af7cb
 +	}
 +	return err
 +}
-diff --git c/common/xray/interfaces.go i/common/xray/interfaces.go
+diff --git a/common/xray/interfaces.go b/common/xray/interfaces.go
 new file mode 100644
-index 0000000..428c338
+index 00000000..428c3388
 --- /dev/null
-+++ i/common/xray/interfaces.go
++++ b/common/xray/interfaces.go
 @@ -0,0 +1,52 @@
 +package common
 +
@@ -1698,11 +1698,11 @@ index 0000000..428c338
 +	// Usually it returns (*Type)(nil) of the object.
 +	Type() interface{}
 +}
-diff --git c/common/xray/json/badoption/range.go i/common/xray/json/badoption/range.go
+diff --git a/common/xray/json/badoption/range.go b/common/xray/json/badoption/range.go
 new file mode 100644
-index 0000000..28ed089
+index 00000000..28ed0896
 --- /dev/null
-+++ i/common/xray/json/badoption/range.go
++++ b/common/xray/json/badoption/range.go
 @@ -0,0 +1,83 @@
 +package badoption
 +
@@ -1787,11 +1787,11 @@ index 0000000..28ed089
 +func (c Range) Rand() int32 {
 +	return int32(crypto.RandBetween(int64(c.From), int64(c.To)))
 +}
-diff --git c/common/xray/net/address.go i/common/xray/net/address.go
+diff --git a/common/xray/net/address.go b/common/xray/net/address.go
 new file mode 100644
-index 0000000..7a99c8a
+index 00000000..7a99c8ad
 --- /dev/null
-+++ i/common/xray/net/address.go
++++ b/common/xray/net/address.go
 @@ -0,0 +1,181 @@
 +package net
 +
@@ -1974,11 +1974,11 @@ index 0000000..7a99c8a
 +func (a domainAddress) String() string {
 +	return a.Domain()
 +}
-diff --git c/common/xray/net/destination.go i/common/xray/net/destination.go
+diff --git a/common/xray/net/destination.go b/common/xray/net/destination.go
 new file mode 100644
-index 0000000..561c772
+index 00000000..561c7726
 --- /dev/null
-+++ i/common/xray/net/destination.go
++++ b/common/xray/net/destination.go
 @@ -0,0 +1,146 @@
 +package net
 +
@@ -2126,11 +2126,11 @@ index 0000000..561c772
 +func (d Destination) IsValid() bool {
 +	return d.Network != Network_Unknown
 +}
-diff --git c/common/xray/net/net.go i/common/xray/net/net.go
+diff --git a/common/xray/net/net.go b/common/xray/net/net.go
 new file mode 100644
-index 0000000..9bc049d
+index 00000000..9bc049d9
 --- /dev/null
-+++ i/common/xray/net/net.go
++++ b/common/xray/net/net.go
 @@ -0,0 +1,13 @@
 +package net
 +
@@ -2145,11 +2145,11 @@ index 0000000..9bc049d
 +
 +// consistent with chrome
 +const ChromeH2KeepAlivePeriod = 45 * time.Second
-diff --git c/common/xray/net/network.go i/common/xray/net/network.go
+diff --git a/common/xray/net/network.go b/common/xray/net/network.go
 new file mode 100644
-index 0000000..356d7fd
+index 00000000..356d7fda
 --- /dev/null
-+++ i/common/xray/net/network.go
++++ b/common/xray/net/network.go
 @@ -0,0 +1,33 @@
 +package net
 +
@@ -2184,11 +2184,11 @@ index 0000000..356d7fd
 +	}
 +	return false
 +}
-diff --git c/common/xray/net/port.go i/common/xray/net/port.go
+diff --git a/common/xray/net/port.go b/common/xray/net/port.go
 new file mode 100644
-index 0000000..6d42c40
+index 00000000..6d42c40b
 --- /dev/null
-+++ i/common/xray/net/port.go
++++ b/common/xray/net/port.go
 @@ -0,0 +1,55 @@
 +package net
 +
@@ -2245,11 +2245,11 @@ index 0000000..6d42c40
 +func (r MemoryPortRange) Contains(port Port) bool {
 +	return r.From <= port && port <= r.To
 +}
-diff --git c/common/xray/net/system.go i/common/xray/net/system.go
+diff --git a/common/xray/net/system.go b/common/xray/net/system.go
 new file mode 100644
-index 0000000..7e1c4b0
+index 00000000..7e1c4b01
 --- /dev/null
-+++ i/common/xray/net/system.go
++++ b/common/xray/net/system.go
 @@ -0,0 +1,84 @@
 +package net
 +
@@ -2335,11 +2335,11 @@ index 0000000..7e1c4b0
 +)
 +
 +type Resolver = net.Resolver
-diff --git c/common/xray/pipe/impl.go i/common/xray/pipe/impl.go
+diff --git a/common/xray/pipe/impl.go b/common/xray/pipe/impl.go
 new file mode 100644
-index 0000000..7b2a97a
+index 00000000..7b2a97a8
 --- /dev/null
-+++ i/common/xray/pipe/impl.go
++++ b/common/xray/pipe/impl.go
 @@ -0,0 +1,209 @@
 +package pipe
 +
@@ -2550,11 +2550,11 @@ index 0000000..7b2a97a
 +
 +	common.Must(p.done.Close())
 +}
-diff --git c/common/xray/pipe/pipe.go i/common/xray/pipe/pipe.go
+diff --git a/common/xray/pipe/pipe.go b/common/xray/pipe/pipe.go
 new file mode 100644
-index 0000000..06f949f
+index 00000000..06f949fa
 --- /dev/null
-+++ i/common/xray/pipe/pipe.go
++++ b/common/xray/pipe/pipe.go
 @@ -0,0 +1,53 @@
 +package pipe
 +
@@ -2609,11 +2609,11 @@ index 0000000..06f949f
 +			pipe: p,
 +		}
 +}
-diff --git c/common/xray/pipe/reader.go i/common/xray/pipe/reader.go
+diff --git a/common/xray/pipe/reader.go b/common/xray/pipe/reader.go
 new file mode 100644
-index 0000000..cafe444
+index 00000000..cafe444a
 --- /dev/null
-+++ i/common/xray/pipe/reader.go
++++ b/common/xray/pipe/reader.go
 @@ -0,0 +1,41 @@
 +package pipe
 +
@@ -2656,11 +2656,11 @@ index 0000000..cafe444
 +	}
 +	return
 +}
-diff --git c/common/xray/pipe/writer.go i/common/xray/pipe/writer.go
+diff --git a/common/xray/pipe/writer.go b/common/xray/pipe/writer.go
 new file mode 100644
-index 0000000..1531263
+index 00000000..15312635
 --- /dev/null
-+++ i/common/xray/pipe/writer.go
++++ b/common/xray/pipe/writer.go
 @@ -0,0 +1,29 @@
 +package pipe
 +
@@ -2691,11 +2691,11 @@ index 0000000..1531263
 +func (w *Writer) Interrupt() {
 +	w.pipe.Interrupt()
 +}
-diff --git c/common/xray/serial/serial.go i/common/xray/serial/serial.go
+diff --git a/common/xray/serial/serial.go b/common/xray/serial/serial.go
 new file mode 100644
-index 0000000..9d8cb4c
+index 00000000..9d8cb4ca
 --- /dev/null
-+++ i/common/xray/serial/serial.go
++++ b/common/xray/serial/serial.go
 @@ -0,0 +1,29 @@
 +package serial
 +
@@ -2726,11 +2726,11 @@ index 0000000..9d8cb4c
 +	binary.BigEndian.PutUint64(b[:], value)
 +	return writer.Write(b[:])
 +}
-diff --git c/common/xray/serial/string.go i/common/xray/serial/string.go
+diff --git a/common/xray/serial/string.go b/common/xray/serial/string.go
 new file mode 100644
-index 0000000..8fdcd7f
+index 00000000..8fdcd7f6
 --- /dev/null
-+++ i/common/xray/serial/string.go
++++ b/common/xray/serial/string.go
 @@ -0,0 +1,35 @@
 +package serial
 +
@@ -2767,11 +2767,11 @@ index 0000000..8fdcd7f
 +	}
 +	return builder.String()
 +}
-diff --git c/common/xray/signal/done/done.go i/common/xray/signal/done/done.go
+diff --git a/common/xray/signal/done/done.go b/common/xray/signal/done/done.go
 new file mode 100644
-index 0000000..189a8cf
+index 00000000..189a8cf3
 --- /dev/null
-+++ i/common/xray/signal/done/done.go
++++ b/common/xray/signal/done/done.go
 @@ -0,0 +1,49 @@
 +package done
 +
@@ -2822,11 +2822,11 @@ index 0000000..189a8cf
 +
 +	return nil
 +}
-diff --git c/common/xray/signal/notifier.go i/common/xray/signal/notifier.go
+diff --git a/common/xray/signal/notifier.go b/common/xray/signal/notifier.go
 new file mode 100644
-index 0000000..19836e5
+index 00000000..19836e54
 --- /dev/null
-+++ i/common/xray/signal/notifier.go
++++ b/common/xray/signal/notifier.go
 @@ -0,0 +1,26 @@
 +package signal
 +
@@ -2854,11 +2854,11 @@ index 0000000..19836e5
 +func (n *Notifier) Wait() <-chan struct{} {
 +	return n.c
 +}
-diff --git c/common/xray/signal/pubsub/pubsub.go i/common/xray/signal/pubsub/pubsub.go
+diff --git a/common/xray/signal/pubsub/pubsub.go b/common/xray/signal/pubsub/pubsub.go
 new file mode 100644
-index 0000000..6de453e
+index 00000000..6de453e8
 --- /dev/null
-+++ i/common/xray/signal/pubsub/pubsub.go
++++ b/common/xray/signal/pubsub/pubsub.go
 @@ -0,0 +1,105 @@
 +package pubsub
 +
@@ -2965,11 +2965,11 @@ index 0000000..6de453e
 +		}
 +	}
 +}
-diff --git c/common/xray/signal/semaphore/semaphore.go i/common/xray/signal/semaphore/semaphore.go
+diff --git a/common/xray/signal/semaphore/semaphore.go b/common/xray/signal/semaphore/semaphore.go
 new file mode 100644
-index 0000000..8696b14
+index 00000000..8696b148
 --- /dev/null
-+++ i/common/xray/signal/semaphore/semaphore.go
++++ b/common/xray/signal/semaphore/semaphore.go
 @@ -0,0 +1,27 @@
 +package semaphore
 +
@@ -2998,11 +2998,11 @@ index 0000000..8696b14
 +func (s *Instance) Signal() {
 +	s.token <- struct{}{}
 +}
-diff --git c/common/xray/signal/timer.go i/common/xray/signal/timer.go
+diff --git a/common/xray/signal/timer.go b/common/xray/signal/timer.go
 new file mode 100644
-index 0000000..52961bf
+index 00000000..52961bf5
 --- /dev/null
-+++ i/common/xray/signal/timer.go
++++ b/common/xray/signal/timer.go
 @@ -0,0 +1,85 @@
 +package signal
 +
@@ -3089,11 +3089,11 @@ index 0000000..52961bf
 +	timer.SetTimeout(timeout)
 +	return timer
 +}
-diff --git c/common/xray/stat/connection.go i/common/xray/stat/connection.go
+diff --git a/common/xray/stat/connection.go b/common/xray/stat/connection.go
 new file mode 100644
-index 0000000..463db62
+index 00000000..463db62d
 --- /dev/null
-+++ i/common/xray/stat/connection.go
++++ b/common/xray/stat/connection.go
 @@ -0,0 +1,34 @@
 +package stat
 +
@@ -3129,11 +3129,11 @@ index 0000000..463db62
 +	}
 +	return nBytes, err
 +}
-diff --git c/common/xray/stats/stats.go i/common/xray/stats/stats.go
+diff --git a/common/xray/stats/stats.go b/common/xray/stats/stats.go
 new file mode 100644
-index 0000000..70bbd02
+index 00000000..70bbd026
 --- /dev/null
-+++ i/common/xray/stats/stats.go
++++ b/common/xray/stats/stats.go
 @@ -0,0 +1,13 @@
 +package stats
 +
@@ -3148,11 +3148,11 @@ index 0000000..70bbd02
 +	// Add adds a value to the current counter value, and returns the previous value.
 +	Add(int64) int64
 +}
-diff --git c/common/xray/task/common.go i/common/xray/task/common.go
+diff --git a/common/xray/task/common.go b/common/xray/task/common.go
 new file mode 100644
-index 0000000..11078fb
+index 00000000..11078fb9
 --- /dev/null
-+++ i/common/xray/task/common.go
++++ b/common/xray/task/common.go
 @@ -0,0 +1,10 @@
 +package task
 +
@@ -3164,11 +3164,11 @@ index 0000000..11078fb
 +		return common.Close(v)
 +	}
 +}
-diff --git c/common/xray/task/periodic.go i/common/xray/task/periodic.go
+diff --git a/common/xray/task/periodic.go b/common/xray/task/periodic.go
 new file mode 100644
-index 0000000..6abe41a
+index 00000000..6abe41ae
 --- /dev/null
-+++ i/common/xray/task/periodic.go
++++ b/common/xray/task/periodic.go
 @@ -0,0 +1,85 @@
 +package task
 +
@@ -3255,11 +3255,11 @@ index 0000000..6abe41a
 +
 +	return nil
 +}
-diff --git c/common/xray/task/task.go i/common/xray/task/task.go
+diff --git a/common/xray/task/task.go b/common/xray/task/task.go
 new file mode 100644
-index 0000000..a153839
+index 00000000..a1538392
 --- /dev/null
-+++ i/common/xray/task/task.go
++++ b/common/xray/task/task.go
 @@ -0,0 +1,64 @@
 +package task
 +
@@ -3325,11 +3325,11 @@ index 0000000..a153839
 +
 +	return nil
 +}
-diff --git c/common/xray/utils/browser.go i/common/xray/utils/browser.go
+diff --git a/common/xray/utils/browser.go b/common/xray/utils/browser.go
 new file mode 100644
-index 0000000..944c5cd
+index 00000000..944c5cdd
 --- /dev/null
-+++ i/common/xray/utils/browser.go
++++ b/common/xray/utils/browser.go
 @@ -0,0 +1,290 @@
 +package utils
 +
@@ -3621,11 +3621,11 @@ index 0000000..944c5cd
 +		}
 +	}
 +}
-diff --git c/common/xray/utils/padding.go i/common/xray/utils/padding.go
+diff --git a/common/xray/utils/padding.go b/common/xray/utils/padding.go
 new file mode 100644
-index 0000000..fe95ba9
+index 00000000..fe95ba9a
 --- /dev/null
-+++ i/common/xray/utils/padding.go
++++ b/common/xray/utils/padding.go
 @@ -0,0 +1,24 @@
 +package utils
 +
@@ -3651,11 +3651,11 @@ index 0000000..fe95ba9
 +	}
 +	return string(result)
 +}
-diff --git c/common/xray/uuid/uuid.go i/common/xray/uuid/uuid.go
+diff --git a/common/xray/uuid/uuid.go b/common/xray/uuid/uuid.go
 new file mode 100644
-index 0000000..31c7b53
+index 00000000..31c7b531
 --- /dev/null
-+++ i/common/xray/uuid/uuid.go
++++ b/common/xray/uuid/uuid.go
 @@ -0,0 +1,105 @@
 +package uuid
 +
@@ -3762,33 +3762,41 @@ index 0000000..31c7b53
 +
 +	return uuid, nil
 +}
-diff --git c/constant/v2ray.go i/constant/v2ray.go
-index c3089a6..1811df5 100644
---- c/constant/v2ray.go
-+++ i/constant/v2ray.go
+diff --git a/constant/v2ray.go b/constant/v2ray.go
+index c3089a6c..1811df5f 100644
+--- a/constant/v2ray.go
++++ b/constant/v2ray.go
 @@ -6,4 +6,5 @@ const (
  	V2RayTransportTypeQUIC        = "quic"
  	V2RayTransportTypeGRPC        = "grpc"
  	V2RayTransportTypeHTTPUpgrade = "httpupgrade"
 +	V2RayTransportTypeXHTTP       = "xhttp"
  )
-diff --git c/option/v2ray_transport.go i/option/v2ray_transport.go
-index 68c2385..c5e43d7 100644
---- c/option/v2ray_transport.go
-+++ i/option/v2ray_transport.go
-@@ -1,6 +1,11 @@
+diff --git a/option/v2ray_transport.go b/option/v2ray_transport.go
+index 1c58b974..d8e23ab5 100644
+--- a/option/v2ray_transport.go
++++ b/option/v2ray_transport.go
+@@ -1,8 +1,12 @@
  package option
  
  import (
 +	"net/http"
+ 	"reflect"
 +	"strings"
-+
+ 
 +	Xbadoption "github.com/sagernet/sing-box/common/xray/json/badoption"
 +	"github.com/sagernet/sing-box/common/xray/utils"
  	C "github.com/sagernet/sing-box/constant"
+ 	"github.com/sagernet/sing-box/schema"
  	E "github.com/sagernet/sing/common/exceptions"
- 	"github.com/sagernet/sing/common/json"
-@@ -15,6 +20,7 @@ type _V2RayTransportOptions struct {
+@@ -12,12 +16,13 @@ import (
+ )
+ 
+ type _V2RayTransportOptions struct {
+-	Type               string                  `json:"type" enum:"http,ws,quic,grpc,httpupgrade"`
++	Type               string                  `json:"type" enum:"http,ws,quic,grpc,httpupgrade,xhttp"`
+ 	HTTPOptions        V2RayHTTPOptions        `json:"-"`
+ 	WebsocketOptions   V2RayWebsocketOptions   `json:"-"`
  	QUICOptions        V2RayQUICOptions        `json:"-"`
  	GRPCOptions        V2RayGRPCOptions        `json:"-"`
  	HTTPUpgradeOptions V2RayHTTPUpgradeOptions `json:"-"`
@@ -3796,7 +3804,7 @@ index 68c2385..c5e43d7 100644
  }
  
  type V2RayTransportOptions _V2RayTransportOptions
-@@ -32,6 +38,8 @@ func (o V2RayTransportOptions) MarshalJSON() ([]byte, error) {
+@@ -35,6 +40,8 @@ func (o V2RayTransportOptions) MarshalJSON() ([]byte, error) {
  		v = o.GRPCOptions
  	case C.V2RayTransportTypeHTTPUpgrade:
  		v = o.HTTPUpgradeOptions
@@ -3805,7 +3813,7 @@ index 68c2385..c5e43d7 100644
  	case "":
  		return nil, E.New("missing transport type")
  	default:
-@@ -57,6 +65,8 @@ func (o *V2RayTransportOptions) UnmarshalJSON(bytes []byte) error {
+@@ -60,6 +67,8 @@ func (o *V2RayTransportOptions) UnmarshalJSON(bytes []byte) error {
  		v = &o.GRPCOptions
  	case C.V2RayTransportTypeHTTPUpgrade:
  		v = &o.HTTPUpgradeOptions
@@ -3814,7 +3822,15 @@ index 68c2385..c5e43d7 100644
  	default:
  		return E.New("unknown transport type: " + o.Type)
  	}
-@@ -98,3 +108,402 @@ type V2RayHTTPUpgradeOptions struct {
+@@ -78,6 +87,7 @@ func (o V2RayTransportOptions) DescribeSchema(builder schema.Builder) (*schema.N
+ 			{Value: C.V2RayTransportTypeQUIC, StructType: reflect.TypeFor[V2RayQUICOptions]()},
+ 			{Value: C.V2RayTransportTypeGRPC, StructType: reflect.TypeFor[V2RayGRPCOptions]()},
+ 			{Value: C.V2RayTransportTypeHTTPUpgrade, StructType: reflect.TypeFor[V2RayHTTPUpgradeOptions]()},
++			{Value: C.V2RayTransportTypeXHTTP, StructType: reflect.TypeFor[V2RayXHTTPOptions]()},
+ 		}, nil)
+ 	})
+ }
+@@ -113,3 +123,402 @@ type V2RayHTTPUpgradeOptions struct {
  	Path    string               `json:"path,omitempty"`
  	Headers badoption.HTTPHeader `json:"headers,omitempty"`
  }
@@ -4217,10 +4233,10 @@ index 68c2385..c5e43d7 100644
 +func (m *V2RayXHTTPXmuxOptions) GetNormalizedHMaxReusableSecs() Xbadoption.Range {
 +	return m.HMaxReusableSecs
 +}
-diff --git c/transport/v2ray/transport.go i/transport/v2ray/transport.go
-index ab52f55..80797fa 100644
---- c/transport/v2ray/transport.go
-+++ i/transport/v2ray/transport.go
+diff --git a/transport/v2ray/transport.go b/transport/v2ray/transport.go
+index ab52f55e..80797fa9 100644
+--- a/transport/v2ray/transport.go
++++ b/transport/v2ray/transport.go
 @@ -10,6 +10,7 @@ import (
  	"github.com/sagernet/sing-box/transport/v2rayhttp"
  	"github.com/sagernet/sing-box/transport/v2rayhttpupgrade"
@@ -4238,11 +4254,11 @@ index ab52f55..80797fa 100644
  	default:
  		return nil, E.New("unknown transport type: " + options.Type)
  	}
-diff --git c/transport/v2rayxhttp/client.go i/transport/v2rayxhttp/client.go
+diff --git a/transport/v2rayxhttp/client.go b/transport/v2rayxhttp/client.go
 new file mode 100644
-index 0000000..e602488
+index 00000000..e6024887
 --- /dev/null
-+++ i/transport/v2rayxhttp/client.go
++++ b/transport/v2rayxhttp/client.go
 @@ -0,0 +1,377 @@
 +package xhttp
 +
@@ -4621,11 +4637,11 @@ index 0000000..e602488
 +	}
 +	return client
 +}
-diff --git c/transport/v2rayxhttp/conn.go i/transport/v2rayxhttp/conn.go
+diff --git a/transport/v2rayxhttp/conn.go b/transport/v2rayxhttp/conn.go
 new file mode 100644
-index 0000000..7da8e91
+index 00000000..7da8e916
 --- /dev/null
-+++ i/transport/v2rayxhttp/conn.go
++++ b/transport/v2rayxhttp/conn.go
 @@ -0,0 +1,108 @@
 +package xhttp
 +
@@ -4735,11 +4751,11 @@ index 0000000..7da8e91
 +	defer c.Unlock()
 +	return c.Instance.Close()
 +}
-diff --git c/transport/v2rayxhttp/dialer.go i/transport/v2rayxhttp/dialer.go
+diff --git a/transport/v2rayxhttp/dialer.go b/transport/v2rayxhttp/dialer.go
 new file mode 100644
-index 0000000..255042b
+index 00000000..255042b1
 --- /dev/null
-+++ i/transport/v2rayxhttp/dialer.go
++++ b/transport/v2rayxhttp/dialer.go
 @@ -0,0 +1,289 @@
 +package xhttp
 +
@@ -5030,11 +5046,11 @@ index 0000000..255042b
 +	}
 +	return path + "/" + value
 +}
-diff --git c/transport/v2rayxhttp/http.go i/transport/v2rayxhttp/http.go
+diff --git a/transport/v2rayxhttp/http.go b/transport/v2rayxhttp/http.go
 new file mode 100644
-index 0000000..03a47da
+index 00000000..03a47da7
 --- /dev/null
-+++ i/transport/v2rayxhttp/http.go
++++ b/transport/v2rayxhttp/http.go
 @@ -0,0 +1,41 @@
 +package xhttp
 +
@@ -5077,11 +5093,11 @@ index 0000000..03a47da
 +	}
 +	return r == c
 +}
-diff --git c/transport/v2rayxhttp/mux.go i/transport/v2rayxhttp/mux.go
+diff --git a/transport/v2rayxhttp/mux.go b/transport/v2rayxhttp/mux.go
 new file mode 100644
-index 0000000..e134fde
+index 00000000..e134fdeb
 --- /dev/null
-+++ i/transport/v2rayxhttp/mux.go
++++ b/transport/v2rayxhttp/mux.go
 @@ -0,0 +1,137 @@
 +package xhttp
 +
@@ -5220,11 +5236,11 @@ index 0000000..e134fde
 +	}
 +	return xmuxClient
 +}
-diff --git c/transport/v2rayxhttp/upload_queue.go i/transport/v2rayxhttp/upload_queue.go
+diff --git a/transport/v2rayxhttp/upload_queue.go b/transport/v2rayxhttp/upload_queue.go
 new file mode 100644
-index 0000000..32259a7
+index 00000000..32259a73
 --- /dev/null
-+++ i/transport/v2rayxhttp/upload_queue.go
++++ b/transport/v2rayxhttp/upload_queue.go
 @@ -0,0 +1,157 @@
 +package xhttp
 +
@@ -5383,11 +5399,11 @@ index 0000000..32259a7
 +	*h = old[0 : n-1]
 +	return x
 +}
-diff --git c/transport/v2rayxhttp/utils.go i/transport/v2rayxhttp/utils.go
+diff --git a/transport/v2rayxhttp/utils.go b/transport/v2rayxhttp/utils.go
 new file mode 100644
-index 0000000..102a64d
+index 00000000..102a64db
 --- /dev/null
-+++ i/transport/v2rayxhttp/utils.go
++++ b/transport/v2rayxhttp/utils.go
 @@ -0,0 +1,150 @@
 +package xhttp
 +
@@ -5539,11 +5555,11 @@ index 0000000..102a64d
 +	}
 +	return cookies
 +}
-diff --git c/transport/v2rayxhttp/writer.go i/transport/v2rayxhttp/writer.go
+diff --git a/transport/v2rayxhttp/writer.go b/transport/v2rayxhttp/writer.go
 new file mode 100644
-index 0000000..3c11e3b
+index 00000000..3c11e3b3
 --- /dev/null
-+++ i/transport/v2rayxhttp/writer.go
++++ b/transport/v2rayxhttp/writer.go
 @@ -0,0 +1,41 @@
 +package xhttp
 +
@@ -5586,11 +5602,11 @@ index 0000000..3c11e3b
 +	}
 +	return writed, nil
 +}
-diff --git c/transport/v2rayxhttp/xpadding.go i/transport/v2rayxhttp/xpadding.go
+diff --git a/transport/v2rayxhttp/xpadding.go b/transport/v2rayxhttp/xpadding.go
 new file mode 100644
-index 0000000..fd36c49
+index 00000000..fd36c49d
 --- /dev/null
-+++ i/transport/v2rayxhttp/xpadding.go
++++ b/transport/v2rayxhttp/xpadding.go
 @@ -0,0 +1,292 @@
 +package xhttp
 +
@@ -5884,3 +5900,4 @@ index 0000000..fd36c49
 +		return n >= from && n <= to
 +	}
 +}
+
