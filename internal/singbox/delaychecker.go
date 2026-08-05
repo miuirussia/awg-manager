@@ -38,12 +38,13 @@ const (
 // DelayChecker runs periodic Clash delay tests for all sing-box tunnels
 // and publishes per-tunnel SSE events.
 type DelayChecker struct {
-	clash     clashAPI
-	lister    tunnelLister
-	publisher DelayPublisher
-	interval  time.Duration
-	timeout   time.Duration
-	testURL   string
+	clash       clashAPI
+	lister      tunnelLister
+	publisher   DelayPublisher
+	interval    time.Duration
+	timeout     time.Duration
+	testURL     string
+	failureHook func(context.Context, string)
 
 	// clients отвечает, открыта ли панель хоть у кого-нибудь. Опционально:
 	// без него проверка работает всегда, как и раньше.
@@ -76,6 +77,9 @@ func (d *DelayChecker) nobodyWatching() bool {
 	d.mu.Unlock()
 	return c != nil && c.ClientCount() == 0
 }
+
+// SetFailureHook receives a tag only after both built-in delay attempts fail.
+func (d *DelayChecker) SetFailureHook(fn func(context.Context, string)) { d.failureHook = fn }
 
 // NewDelayChecker constructs a checker with sane defaults.
 func NewDelayChecker(clash clashAPI, lister tunnelLister, pub DelayPublisher) *DelayChecker {
@@ -151,6 +155,9 @@ func (d *DelayChecker) Probe(ctx context.Context, tag string) (int, error) {
 			"delay":     delay,
 			"timestamp": time.Now().Unix(),
 		})
+	}
+	if delay == 0 && d.failureHook != nil {
+		go d.failureHook(ctx, tag)
 	}
 	return delay, nil
 }
