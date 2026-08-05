@@ -1,8 +1,8 @@
 diff --git a/constant/proxy.go b/constant/proxy.go
-index 60bb806..81163fd 100644
+index d42e5d92b..34bba8359 100644
 --- a/constant/proxy.go
 +++ b/constant/proxy.go
-@@ -21,6 +21,7 @@ const (
+@@ -22,6 +22,7 @@ const (
  	TypeSSH                = "ssh"
  	TypeShadowTLS          = "shadowtls"
  	TypeAnyTLS             = "anytls"
@@ -10,14 +10,17 @@ index 60bb806..81163fd 100644
  	TypeShadowsocksR       = "shadowsocksr"
  	TypeVLESS              = "vless"
  	TypeTUIC               = "tuic"
-@@ -101,3 +102,5 @@ func ProxyDisplayName(proxyType string) string {
+@@ -102,6 +103,8 @@ func ProxyDisplayName(proxyType string) string {
+ 		return "Hysteria2"
+ 	case TypeAnyTLS:
  		return "AnyTLS"
 +	case TypeMieru:
 +		return "Mieru"
  	case TypeOpenConnect:
  		return "OpenConnect"
+ 	case TypeOpenVPNClient:
 diff --git a/docs/configuration/inbound/index.md b/docs/configuration/inbound/index.md
-index 093db65..9823265 100644
+index 093db6524..982326501 100644
 --- a/docs/configuration/inbound/index.md
 +++ b/docs/configuration/inbound/index.md
 @@ -31,6 +31,7 @@
@@ -36,7 +39,7 @@ index 093db65..9823265 100644
 \ No newline at end of file
 +The tag of the inbound.
 diff --git a/docs/configuration/inbound/index.zh.md b/docs/configuration/inbound/index.zh.md
-index 0f73ae9..696cbb7 100644
+index 0f73ae957..696cbb726 100644
 --- a/docs/configuration/inbound/index.zh.md
 +++ b/docs/configuration/inbound/index.zh.md
 @@ -31,6 +31,7 @@
@@ -56,7 +59,7 @@ index 0f73ae9..696cbb7 100644
 +入站的标签。
 diff --git a/docs/configuration/inbound/mieru.md b/docs/configuration/inbound/mieru.md
 new file mode 100644
-index 0000000..5c42200
+index 000000000..5c4220053
 --- /dev/null
 +++ b/docs/configuration/inbound/mieru.md
 @@ -0,0 +1,49 @@
@@ -111,7 +114,7 @@ index 0000000..5c42200
 +If proxy client doesn't sent user hint, proxy server will refuse the connection.
 diff --git a/docs/configuration/inbound/mieru.zh.md b/docs/configuration/inbound/mieru.zh.md
 new file mode 100644
-index 0000000..a389db2
+index 000000000..a389db270
 --- /dev/null
 +++ b/docs/configuration/inbound/mieru.zh.md
 @@ -0,0 +1,49 @@
@@ -165,10 +168,10 @@ index 0000000..a389db2
 +
 +客户端若不发送用户提示，代理服务器将拒绝连接。
 diff --git a/docs/configuration/outbound/index.md b/docs/configuration/outbound/index.md
-index 0411ec0..8f6f705 100644
+index 2e37bdd58..c1b8ccba9 100644
 --- a/docs/configuration/outbound/index.md
 +++ b/docs/configuration/outbound/index.md
-@@ -31,6 +31,7 @@
+@@ -32,6 +32,7 @@
  | `tuic`         | [TUIC](./tuic/)                 |
  | `hysteria2`    | [Hysteria2](./hysteria2/)       |
  | `anytls`       | [AnyTLS](./anytls/)             |
@@ -177,10 +180,10 @@ index 0411ec0..8f6f705 100644
  | `tor`          | [Tor](./tor/)                   |
  | `ssh`          | [SSH](./ssh/)                   |
 diff --git a/docs/configuration/outbound/index.zh.md b/docs/configuration/outbound/index.zh.md
-index 5c7b785..9f21d6f 100644
+index d2203de8c..80cc69249 100644
 --- a/docs/configuration/outbound/index.zh.md
 +++ b/docs/configuration/outbound/index.zh.md
-@@ -31,6 +31,7 @@
+@@ -32,6 +32,7 @@
  | `tuic`         | [TUIC](./tuic/)                 |
  | `hysteria2`    | [Hysteria2](./hysteria2/)       |
  | `anytls`       | [AnyTLS](./anytls/)             |
@@ -190,7 +193,7 @@ index 5c7b785..9f21d6f 100644
  | `ssh`          | [SSH](./ssh/)                   |
 diff --git a/docs/configuration/outbound/mieru.md b/docs/configuration/outbound/mieru.md
 new file mode 100644
-index 0000000..22851fc
+index 000000000..22851fcb8
 --- /dev/null
 +++ b/docs/configuration/outbound/mieru.md
 @@ -0,0 +1,76 @@
@@ -272,7 +275,7 @@ index 0000000..22851fc
 +See [Dial Fields](/configuration/shared/dial/) for details.
 diff --git a/docs/configuration/outbound/mieru.zh.md b/docs/configuration/outbound/mieru.zh.md
 new file mode 100644
-index 0000000..9fdb52f
+index 000000000..9fdb52fab
 --- /dev/null
 +++ b/docs/configuration/outbound/mieru.zh.md
 @@ -0,0 +1,76 @@
@@ -353,22 +356,22 @@ index 0000000..9fdb52f
 +
 +参阅 [拨号字段](/zh/configuration/shared/dial/)。
 diff --git a/go.mod b/go.mod
-index d66b98a..1fd8bf7 100644
+index ea11b2271..9d2a2bf08 100644
 --- a/go.mod
 +++ b/go.mod
-@@ -12,6 +12,7 @@ require (
- 	github.com/creack/pty v1.1.24
+@@ -13,6 +13,7 @@ require (
  	github.com/cretz/bine v0.2.0
  	github.com/database64128/tfo-go/v2 v2.3.2
+ 	github.com/dblohm7/wingoes v0.0.0-20240119213807-a09d6be7affa
 +	github.com/enfein/mieru/v3 v3.34.1
  	github.com/go-chi/chi/v5 v5.2.5
  	github.com/go-chi/render v1.0.3
  	github.com/godbus/dbus/v5 v5.2.2
 diff --git a/go.sum b/go.sum
-index d83b2a9..caea8aa 100644
+index 2e322ef55..07c860875 100644
 --- a/go.sum
 +++ b/go.sum
-@@ -71,6 +71,8 @@ github.com/dnaeon/go-vcr v1.2.0 h1:zHCHvJYTMh1N7xnV7zf1m1GPBF9Ad0Jk/whtQ1663qI=
+@@ -76,6 +76,8 @@ github.com/dnaeon/go-vcr v1.2.0 h1:zHCHvJYTMh1N7xnV7zf1m1GPBF9Ad0Jk/whtQ1663qI=
  github.com/dnaeon/go-vcr v1.2.0/go.mod h1:R4UdLID7HZT3taECzJs4YgbbH6PIGXB6W/sc5OLb6RQ=
  github.com/ebitengine/purego v0.10.0 h1:QIw4xfpWT6GWTzaW5XEKy3HXoqrJGx1ijYHzTF0/ISU=
  github.com/ebitengine/purego v0.10.0/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
@@ -378,10 +381,10 @@ index d83b2a9..caea8aa 100644
  github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
  github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 diff --git a/include/registry.go b/include/registry.go
-index 6ea32e1..511511a 100644
+index 9bb9220c1..4d6172a76 100644
 --- a/include/registry.go
 +++ b/include/registry.go
-@@ -24,6 +24,7 @@ import (
+@@ -25,6 +25,7 @@ import (
  	"github.com/sagernet/sing-box/protocol/direct"
  	"github.com/sagernet/sing-box/protocol/group"
  	"github.com/sagernet/sing-box/protocol/http"
@@ -389,7 +392,7 @@ index 6ea32e1..511511a 100644
  	"github.com/sagernet/sing-box/protocol/mixed"
  	"github.com/sagernet/sing-box/protocol/naive"
  	"github.com/sagernet/sing-box/protocol/redirect"
-@@ -68,6 +69,7 @@ func InboundRegistry() *inbound.Registry {
+@@ -69,6 +70,7 @@ func InboundRegistry() *inbound.Registry {
  	shadowtls.RegisterInbound(registry)
  	vless.RegisterInbound(registry)
  	anytls.RegisterInbound(registry)
@@ -397,7 +400,7 @@ index 6ea32e1..511511a 100644
  
  	registerQUICInbounds(registry)
  	registerCloudflaredInbound(registry)
-@@ -98,6 +100,7 @@ func OutboundRegistry() *outbound.Registry {
+@@ -100,6 +102,7 @@ func OutboundRegistry() *outbound.Registry {
  	shadowtls.RegisterOutbound(registry)
  	vless.RegisterOutbound(registry)
  	anytls.RegisterOutbound(registry)
@@ -407,7 +410,7 @@ index 6ea32e1..511511a 100644
  	registerStubForRemovedOutbounds(registry)
 diff --git a/option/mieru.go b/option/mieru.go
 new file mode 100644
-index 0000000..a3d5b7b
+index 000000000..a3d5b7b63
 --- /dev/null
 +++ b/option/mieru.go
 @@ -0,0 +1,27 @@
@@ -440,7 +443,7 @@ index 0000000..a3d5b7b
 +}
 diff --git a/protocol/mieru/inbound.go b/protocol/mieru/inbound.go
 new file mode 100644
-index 0000000..637df5d
+index 000000000..637df5dfd
 --- /dev/null
 +++ b/protocol/mieru/inbound.go
 @@ -0,0 +1,340 @@
@@ -786,7 +789,7 @@ index 0000000..637df5d
 +}
 diff --git a/protocol/mieru/outbound.go b/protocol/mieru/outbound.go
 new file mode 100644
-index 0000000..d04826f
+index 000000000..d04826fd4
 --- /dev/null
 +++ b/protocol/mieru/outbound.go
 @@ -0,0 +1,277 @@
