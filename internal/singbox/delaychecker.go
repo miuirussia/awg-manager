@@ -37,18 +37,22 @@ const (
 // DelayChecker runs periodic Clash delay tests for all sing-box tunnels
 // and publishes per-tunnel SSE events.
 type DelayChecker struct {
-	clash     clashAPI
-	lister    tunnelLister
-	publisher DelayPublisher
-	interval  time.Duration
-	timeout   time.Duration
-	testURL   string
+	clash       clashAPI
+	lister      tunnelLister
+	publisher   DelayPublisher
+	interval    time.Duration
+	timeout     time.Duration
+	testURL     string
+	failureHook func(context.Context, string)
 
 	// mu protects single-flight per tag to avoid hammering Clash when both
 	// the periodic tick and an on-demand call race.
 	mu       sync.Mutex
 	inflight map[string]bool
 }
+
+// SetFailureHook receives a tag only after both built-in delay attempts fail.
+func (d *DelayChecker) SetFailureHook(fn func(context.Context, string)) { d.failureHook = fn }
 
 // NewDelayChecker constructs a checker with sane defaults.
 func NewDelayChecker(clash clashAPI, lister tunnelLister, pub DelayPublisher) *DelayChecker {
@@ -104,6 +108,9 @@ func (d *DelayChecker) CheckOne(ctx context.Context, tag string) (int, error) {
 			"delay":     delay,
 			"timestamp": time.Now().Unix(),
 		})
+	}
+	if delay == 0 && d.failureHook != nil {
+		go d.failureHook(ctx, tag)
 	}
 	return delay, nil
 }

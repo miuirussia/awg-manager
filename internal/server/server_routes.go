@@ -761,6 +761,7 @@ func (s *Server) registerSingboxRoutes(mux *http.ServeMux, h *routeHandlers) {
 		mux.HandleFunc("/api/singbox/control", h.guarded(s.singboxHandler.Control))
 		mux.HandleFunc("/api/singbox/ndms-proxy", h.guarded(s.singboxHandler.ToggleNDMSProxy))
 		mux.HandleFunc("/api/singbox/tunnels/delay-check", h.guarded(s.singboxHandler.DelayCheck))
+		mux.HandleFunc("/api/singbox/tunnels/tls-resolve", h.guarded(s.singboxHandler.ResolveTLS))
 		mux.HandleFunc("/api/singbox/tunnels/test/connectivity", h.guarded(s.singboxHandler.CheckConnectivity))
 		mux.HandleFunc("/api/singbox/tunnels/test/ip", h.guarded(s.singboxHandler.CheckIP))
 		mux.HandleFunc("/api/singbox/tunnels/test/speed/stream", h.guarded(s.singboxHandler.SpeedTestStream))
