@@ -38,6 +38,9 @@
 	let saving = $state(false);
 	let copyingLink = $state(false);
 	let linkCopied = $state(false);
+	let resolvingTLS = $state(false);
+	let tlsResolveError = $state<string | null>(null);
+	let tlsResolvedIPs = $state<string[]>([]);
 	let error = $state<string | null>(null);
 	// The outbound is an arbitrary sing-box JSON object whose shape depends on the
 	// protocol; the editor reads/writes fields by path, so it is modelled as a
@@ -192,6 +195,20 @@
 			copyingLink = false;
 		}
 	}
+
+	async function resolveTLS(): Promise<void> {
+		if (resolvingTLS) return;
+		resolvingTLS = true;
+		tlsResolveError = null;
+		try {
+			const result = await api.singboxResolveTunnelTLS(tag);
+			outbound = result.outbound as JsonRecord;
+			tlsResolvedIPs = result.ips;
+			initialOutboundFingerprint = outboundFingerprint(outbound);
+		} catch (e) {
+			tlsResolveError = e instanceof Error ? e.message : String(e);
+		} finally { resolvingTLS = false; }
+	}
 </script>
 
 <svelte:head>
@@ -328,6 +345,11 @@
 
 				<section class="card tunnel-section">
 					<SettingsSectionLabel label="TLS" icon={Lock} tone="blue" header />
+					<div class="tls-resolve">
+						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>Обновить IP</Button>
+						{#if tlsResolvedIPs.length}<span>IP: {tlsResolvedIPs.join(', ')}</span>{/if}
+						{#if tlsResolveError}<span class="error-msg">{tlsResolveError}</span>{/if}
+					</div>
 
 					<div class="form-group">
 						<label class="label" for="sni">SNI</label>
@@ -417,6 +439,11 @@
 
 				<section class="card tunnel-section">
 					<SettingsSectionLabel label="TLS" icon={Lock} tone="blue" header />
+					<div class="tls-resolve">
+						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>Обновить IP</Button>
+						{#if tlsResolvedIPs.length}<span>IP: {tlsResolvedIPs.join(', ')}</span>{/if}
+						{#if tlsResolveError}<span class="error-msg">{tlsResolveError}</span>{/if}
+					</div>
 
 					<div class="form-group">
 						<label class="label" for="trojan_sni">SNI</label>
@@ -558,6 +585,11 @@
 
 				<section class="card tunnel-section">
 					<SettingsSectionLabel label="TLS" icon={Lock} tone="blue" header />
+					<div class="tls-resolve">
+						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>Обновить IP</Button>
+						{#if tlsResolvedIPs.length}<span>IP: {tlsResolvedIPs.join(', ')}</span>{/if}
+						{#if tlsResolveError}<span class="error-msg">{tlsResolveError}</span>{/if}
+					</div>
 
 					<div class="form-group">
 						<label class="label" for="hy2_sni">SNI</label>
@@ -711,6 +743,15 @@
 {/snippet}
 
 <style>
+	.tls-resolve {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin: 0 0 0.75rem;
+		font-size: 0.8125rem;
+		color: var(--text-muted);
+		flex-wrap: wrap;
+	}
 	.sticky-header {
 		display: flex;
 		align-items: center;

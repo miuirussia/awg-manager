@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,6 +42,35 @@ type SingboxStatusData struct {
 	InstallState     string   `json:"installState" example:"outdated_no_space"`
 	RequiredBytes    int64    `json:"requiredBytes" example:"32145678"`
 	FreeBytes        int64    `json:"freeBytes" example:"8221456"`
+}
+
+// ResolveTLS refreshes the IP used by sing-box for a TLS tunnel.
+func (h *SingboxHandler) ResolveTLS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		response.MethodNotAllowed(w)
+		return
+	}
+	if h.tlsResolver == nil {
+		response.InternalError(w, "TLS resolver not wired")
+		return
+	}
+	tag := r.URL.Query().Get("tag")
+	if tag == "" {
+		response.BadRequest(w, "tag required")
+		return
+	}
+	raw, err := h.op.GetTunnel(r.Context(), tag)
+	if err != nil {
+		response.ErrorWithStatus(w, http.StatusNotFound, err.Error(), "NOT_FOUND")
+		return
+	}
+	updated, ips, err := h.tlsResolver.Resolve(r.Context(), tag, raw)
+	if err != nil {
+		response.ErrorWithStatus(w, http.StatusBadGateway, err.Error(), "TLS_RESOLVE_FAILED")
+		return
+	}
+	publishInvalidated(h.bus, ResourceSingboxTunnels, "tls-resolved")
+	response.Success(w, map[string]any{"tag": tag, "ips": ips, "outbound": json.RawMessage(h.tlsResolver.Overlay(tag, updated))})
 }
 
 func singboxStatusData(s singbox.Status) SingboxStatusData {
@@ -121,6 +151,7 @@ type SingboxHandler struct {
 	op              *singbox.Operator
 	bus             *events.Bus
 	delayChecker    *singbox.DelayChecker
+	tlsResolver     *singbox.TLSResolver
 	testingSvc      *testing.Service
 	log             *logging.ScopedLogger
 	migrator        *singbox.Migrator
@@ -130,6 +161,8 @@ type SingboxHandler struct {
 	routerRefs      tunnelservice.RouterRefChecker
 	bindValidator   func(ctx context.Context, name string) error
 }
+
+func (h *SingboxHandler) SetTLSResolver(r *singbox.TLSResolver) { h.tlsResolver = r }
 
 // ndmsProxyToggler — узкий интерфейс для чтения текущего значения
 // toggle. SingboxHandler полагается на него для idempotency-check
@@ -540,6 +573,9 @@ func (h *SingboxHandler) enrichedTunnels(ctx context.Context) ([]singboxEnriched
 	out := make([]singboxEnrichedTunnel, 0, len(list))
 	proxies, _ := h.op.Clash().GetProxies() // best-effort; ignore error
 	for _, t := range list {
+		if h.tlsResolver != nil {
+			t.Server = h.tlsResolver.DisplayHost(t.Tag, t.Server)
+		}
 		e := singboxEnrichedTunnel{TunnelInfo: t}
 		if p, ok := proxies[t.Tag]; ok && len(p.History) > 0 {
 			d := p.History[len(p.History)-1].Delay
@@ -596,6 +632,20 @@ func (h *SingboxHandler) AddTunnels(w http.ResponseWriter, r *http.Request) {
 	if added == nil {
 		added = []singbox.TunnelInfo{}
 	}
+	// Imports initially carry a hostname from the share link. Resolve it before
+	// returning so the persisted sing-box outbound dials the IP from the start.
+	if h.tlsResolver != nil {
+		for _, tunnel := range added {
+			if net.ParseIP(tunnel.Server) != nil || tunnel.Server == "" {
+				continue
+			}
+			if raw, getErr := h.op.GetTunnel(r.Context(), tunnel.Tag); getErr == nil {
+				if _, _, resolveErr := h.tlsResolver.Resolve(r.Context(), tunnel.Tag, raw); resolveErr != nil {
+					h.log.Warn("tls-resolve", tunnel.Tag, resolveErr.Error())
+				}
+			}
+		}
+	}
 	if len(added) > 0 {
 		h.bus.PublishInvalidated(events.ResourceSingboxTunnels, "tunnel-added")
 	}
@@ -648,6 +698,9 @@ func (h *SingboxHandler) GetTunnel(w http.ResponseWriter, r *http.Request) {
 			response.InternalError(w, err.Error())
 		}
 		return
+	}
+	if h.tlsResolver != nil {
+		ob = h.tlsResolver.Overlay(tag, ob)
 	}
 	response.Success(w, map[string]interface{}{"tag": tag, "outbound": json.RawMessage(ob)})
 }
@@ -723,6 +776,25 @@ func (h *SingboxHandler) UpdateTunnel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.log.Info("single-update", tag, "requested via API")
+	if h.tlsResolver != nil {
+		var ob map[string]any
+		if json.Unmarshal(body.Outbound, &ob) == nil {
+			if host, _ := ob["server"].(string); net.ParseIP(host) == nil && host != "" {
+				if _, _, err := h.tlsResolver.Resolve(r.Context(), tag, body.Outbound); err != nil {
+					response.BadRequest(w, err.Error())
+					return
+				}
+				publishInvalidated(h.bus, ResourceSingboxTunnels, "tunnel-updated")
+				fresh, ferr := h.enrichedTunnels(r.Context())
+				if ferr != nil {
+					response.InternalError(w, ferr.Error())
+					return
+				}
+				response.Success(w, fresh)
+				return
+			}
+		}
+	}
 	if err := h.op.UpdateTunnel(r.Context(), tag, body.Outbound); err != nil {
 		response.InternalError(w, err.Error())
 		return
@@ -783,6 +855,9 @@ func (h *SingboxHandler) RenameTunnel(w http.ResponseWriter, r *http.Request) {
 			response.InternalError(w, err.Error())
 		}
 		return
+	}
+	if h.tlsResolver != nil {
+		_ = h.tlsResolver.Rename(body.OldTag, body.NewTag)
 	}
 	h.bus.PublishInvalidated(events.ResourceSingboxTunnels, "tunnel-renamed")
 	out, err := h.enrichedTunnels(r.Context())
@@ -1114,6 +1189,9 @@ func (h *SingboxHandler) DeleteTunnel(w http.ResponseWriter, r *http.Request) {
 	if err := h.op.RemoveTunnel(r.Context(), tag); err != nil {
 		response.InternalError(w, err.Error())
 		return
+	}
+	if h.tlsResolver != nil {
+		_ = h.tlsResolver.Delete(tag)
 	}
 	h.bus.PublishInvalidated(events.ResourceSingboxTunnels, "tunnel-removed")
 	out, err := h.enrichedTunnels(r.Context())
