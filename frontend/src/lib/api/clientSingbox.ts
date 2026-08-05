@@ -201,6 +201,10 @@ export class SingboxClient extends RoutingClient {
 		});
 	}
 
+	async singboxResolveTunnelTLS(tag: string): Promise<{ tag: string; ips: string[]; outbound: unknown }> {
+		return this.request(`/singbox/tunnels/tls-resolve?tag=${encodeURIComponent(tag)}`, { method: 'POST' });
+	}
+
 	async singboxRenameTunnel(oldTag: string, newTag: string): Promise<SingboxTunnel[]> {
 		return this.request('/singbox/tunnels/rename', {
 			method: 'PATCH',
