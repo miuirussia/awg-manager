@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"time"
 
 	"log/slog"
 
@@ -44,6 +46,32 @@ func (a *app) setupSingbox() {
 		a.eventBus,
 	)
 	a.singboxHandler = api.NewSingboxHandler(a.singboxOp, a.eventBus, delayChecker, a.testService, a.loggingService)
+	tlsResolveStore := singbox.NewTLSResolveStore(a.dataDir)
+	if err := tlsResolveStore.Load(); err != nil {
+		a.bootLog.Warn("singbox-tls-resolve", "load", err.Error())
+	}
+	tlsResolver := singbox.NewTLSResolver(a.singboxOp, tlsResolveStore)
+	a.singboxHandler.SetTLSResolver(tlsResolver)
+	delayChecker.SetFailureHook(func(ctx context.Context, tag string) {
+		raw, err := a.singboxOp.GetTunnel(ctx, tag)
+		if err == nil {
+			_, _, _ = tlsResolver.Resolve(ctx, tag, raw)
+		}
+	})
+	tlsResolveCtx, tlsResolveCancel := context.WithCancel(context.Background())
+	a.deferOnExit(tlsResolveCancel)
+	go func() {
+		ticker := time.NewTicker(singbox.TLSResolveInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-tlsResolveCtx.Done():
+				return
+			case <-ticker.C:
+				tlsResolver.RefreshDue(tlsResolveCtx)
+			}
+		}
+	}()
 	singboxMigrator := singbox.NewMigrator(a.singboxOp, a.settingsStore, a.loggingService)
 	a.singboxHandler.SetNDMSProxyMigrator(singboxMigrator, a.settingsStore)
 	a.clashProxy = api.NewClashProxy(a.singboxOp)
