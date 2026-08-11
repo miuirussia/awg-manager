@@ -4259,7 +4259,7 @@ new file mode 100644
 index 00000000..e6024887
 --- /dev/null
 +++ b/transport/v2rayxhttp/client.go
-@@ -0,0 +1,377 @@
+@@ -0,0 +1,376 @@
 +package xhttp
 +
 +import (
@@ -4288,7 +4288,6 @@ index 00000000..e6024887
 +	"github.com/sagernet/sing-box/option"
 +	qtls "github.com/sagernet/sing-quic"
 +	"github.com/sagernet/sing/common"
-+	"github.com/sagernet/sing/common/bufio"
 +	E "github.com/sagernet/sing/common/exceptions"
 +	M "github.com/sagernet/sing/common/metadata"
 +	N "github.com/sagernet/sing/common/network"
@@ -4596,7 +4595,7 @@ index 00000000..e6024887
 +				if dErr != nil {
 +					return nil, dErr
 +				}
-+				return qtls.DialEarly(ctx, bufio.NewUnbindPacketConn(udpConn), udpConn.RemoteAddr(), tlsConfig, cfg)
++				return qtls.DialEarly(ctx, udpConn, tlsConfig, cfg)
 +			},
 +		}
 +	case "2":
@@ -5900,4 +5899,3 @@ index 00000000..fd36c49d
 +		return n >= from && n <= to
 +	}
 +}
-
