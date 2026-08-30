@@ -15,8 +15,6 @@ permissions:
 env:
   AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
   AWG_CHANGELOG_URL: https://github.com/miuirussia/awg-manager/releases/download/latest/CHANGELOG.md
-  SINGBOX_VERSION: 1.14.0-testing
-  SINGBOX_REF: testing
 
 jobs:
   frontend:
@@ -46,17 +44,18 @@ jobs:
           if-no-files-found: error
 
   version:
-    name: Resolve IPK version
+    name: Resolve build versions
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       ipk_version: ${{ steps.resolve.outputs.ipk_version }}
+      singbox_version: ${{ steps.resolve.outputs.singbox_version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - name: Resolve revision for current patch
+      - name: Resolve versions
         id: resolve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,6 +63,12 @@ jobs:
           set -euo pipefail
 
           VERSION="$(tr -d '[:space:]' < VERSION)"
+          SINGBOX_VERSION="$(gh api repos/hoaxisr/amnezia-box/releases/latest --jq .tag_name)"
+          if [[ -z "$SINGBOX_VERSION" ]]; then
+            echo "Unable to resolve the latest amnezia-box release" >&2
+            exit 1
+          fi
+
           REV=1
           PREV=""
 
@@ -78,8 +83,10 @@ jobs:
           fi
 
           IPK_VERSION="${VERSION}+r${REV}"
-          echo "Resolved ${IPK_VERSION} (previous: ${PREV:-none})"
+          echo "Resolved IPK ${IPK_VERSION} (previous: ${PREV:-none})"
+          echo "Resolved amnezia-box release ${SINGBOX_VERSION}"
           echo "ipk_version=${IPK_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "singbox_version=${SINGBOX_VERSION}" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build (${{ matrix.arch }})
@@ -125,13 +132,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          sha="$(git ls-remote https://github.com/sagernet/sing-box.git "$SINGBOX_REF" | awk 'NR == 1 { print $1 }')"
+          version="${{ needs.version.outputs.singbox_version }}"
+          sha="$(git ls-remote https://github.com/hoaxisr/amnezia-box.git "refs/tags/${version}" | awk 'NR == 1 { print $1 }')"
           if [[ -z "$sha" ]]; then
-            echo "Unable to resolve SINGBOX_REF=$SINGBOX_REF" >&2
+            echo "Unable to resolve amnezia-box release $version" >&2
             exit 1
           fi
 
-          echo "Resolved SINGBOX_REF=$SINGBOX_REF to $sha"
+          echo "Resolved amnezia-box release $version to $sha"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Restore sing-box build artifacts
@@ -143,27 +151,29 @@ jobs:
           # (per-arch URL/SHA256/Size) regenerated unconditionally from the
           # binary by the "Refresh sing-box embedded metadata" step below, so it
           # is always fresh whether the binary was rebuilt or restored.
-          key: sing-box-${{ matrix.arch }}-${{ env.SINGBOX_VERSION }}-${{ env.SINGBOX_REF }}-${{ steps.singbox-ref.outputs.sha }}-repo-${{ hashFiles('scripts/build-singbox.sh', 'scripts/patches/**') }}
+          key: sing-box-${{ matrix.arch }}-${{ needs.version.outputs.singbox_version }}-${{ steps.singbox-ref.outputs.sha }}-repo-${{ hashFiles('scripts/build-singbox.sh') }}
           path: |
-            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}
-            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}.sha256
+            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}
+            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}.sha256
 
       - name: Build sing-box
         if: steps.singbox-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
 
-          ./scripts/build-singbox.sh "${{ matrix.arch }}"
+          SINGBOX_VERSION="${{ needs.version.outputs.singbox_version }}" \
+          SINGBOX_REF="${{ needs.version.outputs.singbox_version }}" \
+            ./scripts/build-singbox.sh "${{ matrix.arch }}"
 
       - name: Save sing-box build artifacts
         if: steps.singbox-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
         with:
           # Key + path MUST match the restore step above (see its comment).
-          key: sing-box-${{ matrix.arch }}-${{ env.SINGBOX_VERSION }}-${{ env.SINGBOX_REF }}-${{ steps.singbox-ref.outputs.sha }}-repo-${{ hashFiles('scripts/build-singbox.sh', 'scripts/patches/**') }}
+          key: sing-box-${{ matrix.arch }}-${{ needs.version.outputs.singbox_version }}-${{ steps.singbox-ref.outputs.sha }}-repo-${{ hashFiles('scripts/build-singbox.sh') }}
           path: |
-            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}
-            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}.sha256
+            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}
+            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}.sha256
 
       - name: Refresh sing-box embedded metadata
         # Unconditional: on a cache hit "Build sing-box" is skipped, but
@@ -172,7 +182,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          RELEASE_BASE_URL="$AWG_RELEASE_BASE_URL" ./scripts/update-singbox-embedded.sh "${{ matrix.arch }}" "$SINGBOX_VERSION"
+          RELEASE_BASE_URL="$AWG_RELEASE_BASE_URL" \
+            ./scripts/update-singbox-embedded.sh "${{ matrix.arch }}" "${{ needs.version.outputs.singbox_version }}"
 
       - name: Build
         id: build
@@ -192,8 +203,8 @@ jobs:
           name: result-${{ matrix.arch }}
           path: |
             dist/awg-manager_*_${{ matrix.arch }}-kn.ipk
-            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}
-            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}.sha256
+            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}
+            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}.sha256
             dist/VERSION
           if-no-files-found: error
 
