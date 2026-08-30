@@ -69,7 +69,7 @@ func (h *SingboxHandler) ResolveTLS(w http.ResponseWriter, r *http.Request) {
 		response.ErrorWithStatus(w, http.StatusBadGateway, err.Error(), "TLS_RESOLVE_FAILED")
 		return
 	}
-	publishInvalidated(h.bus, ResourceSingboxTunnels, "tls-resolved")
+	h.bus.PublishInvalidated(events.ResourceSingboxTunnels, "tls-resolved")
 	response.Success(w, map[string]any{"tag": tag, "ips": ips, "outbound": json.RawMessage(h.tlsResolver.Overlay(tag, updated))})
 }
 
@@ -784,7 +784,7 @@ func (h *SingboxHandler) UpdateTunnel(w http.ResponseWriter, r *http.Request) {
 					response.BadRequest(w, err.Error())
 					return
 				}
-				publishInvalidated(h.bus, ResourceSingboxTunnels, "tunnel-updated")
+				h.bus.PublishInvalidated(events.ResourceSingboxTunnels, "tunnel-updated")
 				fresh, ferr := h.enrichedTunnels(r.Context())
 				if ferr != nil {
 					response.InternalError(w, ferr.Error())
