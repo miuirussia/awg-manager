@@ -13,9 +13,9 @@ and a host sing-box.
 ```bash
 # 1) get a host sing-box pinned to the project's runtime version
 ver="$(sed -n 's/^const RequiredVersion = "\(.*\)"/\1/p' internal/singbox/installer/embedded.go)"
-curl -fsSL -o /tmp/sb.tgz "https://github.com/SagerNet/sing-box/releases/download/v${ver}/sing-box-${ver}-linux-amd64.tar.gz"
-tar -xzf /tmp/sb.tgz -C /tmp
-SB=$(find /tmp -type f -name sing-box -path "*${ver}-linux-amd64*" | head -1)
+git clone --depth=1 --branch "$ver" https://github.com/hoaxisr/amnezia-box.git /tmp/sing-box
+(cd /tmp/sing-box && go build -o /tmp/sing-box-bin ./cmd/sing-box)
+SB=/tmp/sing-box-bin
 
 # 2) generate — base is read from internal/presets/defaults.json, then rewritten
 go run ./tools/genpresets -singbox "$SB"
