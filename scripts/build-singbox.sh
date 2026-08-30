@@ -18,7 +18,7 @@ fi
 REQUIRED_VERSION_FILE="$PROJECT_ROOT/internal/singbox/installer/embedded.go"
 DEFAULT_SINGBOX_VERSION="$(sed -n 's/^const RequiredVersion = "\(.*\)"/\1/p' "$REQUIRED_VERSION_FILE")"
 SINGBOX_VERSION="${SINGBOX_VERSION_ARG:-${SINGBOX_VERSION:-$DEFAULT_SINGBOX_VERSION}}"
-SINGBOX_REF="${SINGBOX_REF:-v$SINGBOX_VERSION}"
+SINGBOX_REF="${SINGBOX_REF:-$SINGBOX_VERSION}"
 SINGBOX_GO="${SINGBOX_GO:-go}"
 SINGBOX_LOW_MEMORY="${SINGBOX_LOW_MEMORY:-1}"
 CRONET_GO_DIR="${CRONET_GO_DIR:-$HOME/cronet-go}"
@@ -82,11 +82,11 @@ checkout_singbox_ref() {
         rm -rf "$dir"
         mkdir -p "$dir"
         git init "$dir"
-        git -C "$dir" remote add origin https://github.com/sagernet/sing-box.git
+        git -C "$dir" remote add origin https://github.com/hoaxisr/amnezia-box.git
     elif git -C "$dir" remote get-url origin >/dev/null 2>&1; then
-        git -C "$dir" remote set-url origin https://github.com/sagernet/sing-box.git
+        git -C "$dir" remote set-url origin https://github.com/hoaxisr/amnezia-box.git
     else
-        git -C "$dir" remote add origin https://github.com/sagernet/sing-box.git
+        git -C "$dir" remote add origin https://github.com/hoaxisr/amnezia-box.git
     fi
 
     git -C "$dir" fetch --depth=1 origin "$ref"
@@ -105,48 +105,6 @@ else
 fi
 
 cd "$SINGBOX_DIR"
-
-apply_mieru_patch() {
-    local patch_file="$PROJECT_ROOT/scripts/patches/mieru.patch"
-    if [[ ! -f "$patch_file" ]]; then
-        echo "ERROR: missing Mieru sing-box patch: $patch_file" >&2
-        exit 1
-    fi
-    if git apply --reverse --check "$patch_file" >/dev/null 2>&1; then
-        echo "Mieru patch already applied"
-        return
-    fi
-    echo "Applying Mieru patch: $patch_file"
-    if ! git apply --3way --whitespace=fix "$patch_file"; then
-        echo "ERROR: failed to apply Mieru patch to sing-box source at $SINGBOX_DIR" >&2
-        echo "       Check that SINGBOX_REF=$SINGBOX_REF is compatible with scripts/patches/mieru.patch" >&2
-        exit 1
-    fi
-}
-
-apply_xhttp_patch() {
-    # Ported xhttp transport imports quic-go/http3 directly and is NOT build-tag
-    # guarded; it requires `with_quic` (present in both DEFAULT_BUILD_TAGS sets).
-    # If a future tag refactor drops with_quic, these files will fail to build.
-    local patch_file="$PROJECT_ROOT/scripts/patches/xhttp.patch"
-    if [[ ! -f "$patch_file" ]]; then
-        echo "ERROR: missing XHTTP sing-box patch: $patch_file" >&2
-        exit 1
-    fi
-    if git apply --reverse --check "$patch_file" >/dev/null 2>&1; then
-        echo "XHTTP patch already applied"
-        return
-    fi
-    echo "Applying XHTTP patch: $patch_file"
-    if ! git apply --3way --whitespace=fix "$patch_file"; then
-        echo "ERROR: failed to apply XHTTP patch to sing-box source at $SINGBOX_DIR" >&2
-        echo "       Check that SINGBOX_REF=$SINGBOX_REF is compatible with scripts/patches/xhttp.patch" >&2
-        exit 1
-    fi
-}
-
-apply_mieru_patch
-apply_xhttp_patch
 
 append_tag() {
     local tag="$1"
