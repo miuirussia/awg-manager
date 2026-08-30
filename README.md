@@ -3,7 +3,7 @@
 > Веб-интерфейс для управления AmneziaWG VPN-туннелями на роутерах Keenetic.
 В тестовом режиме добавлена поддержка Sing-box (vless tcp, hysteria, trojan, etc)
 
-> **Disclaimer:** AWG Manager — независимый open-source проект, не аффилированный с [Amnezia.org](https://amnezia.org) и Sing-box [SagerNet](https://github.com/SagerNet/sing-box) и не являющийся их официальным продуктом.Програма находится в стадии вечной BETA версии.
+> **Disclaimer:** AWG Manager — независимый open-source проект, не аффилированный с [Amnezia.org](https://amnezia.org) и Sing-box [Amnezia Box](https://github.com/hoaxisr/amnezia-box) и не являющийся их официальным продуктом.Програма находится в стадии вечной BETA версии.
 
 ![awgm-showcase](https://raw.githubusercontent.com/hoaxisr/awg-manager/develop/scripts/dev/awgm-showcase.webp)
 
