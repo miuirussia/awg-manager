@@ -63,7 +63,14 @@ jobs:
           set -euo pipefail
 
           VERSION="$(tr -d '[:space:]' < VERSION)"
-          SINGBOX_VERSION="$(gh api repos/hoaxisr/amnezia-box/releases/latest --jq .tag_name)"
+          # /releases/latest excludes prereleases. Choose the most recently
+          # published non-draft release, so a newer prerelease is not missed.
+          SINGBOX_VERSION="$(gh api --paginate --slurp 'repos/hoaxisr/amnezia-box/releases?per_page=100' | jq -r '
+            add
+            | [ .[] | select(.draft | not) | select(.published_at != null) ]
+            | max_by(.published_at)
+            | .tag_name // empty
+          ')"
           if [[ -z "$SINGBOX_VERSION" ]]; then
             echo "Unable to resolve the latest amnezia-box release" >&2
             exit 1
