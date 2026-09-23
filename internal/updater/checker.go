@@ -144,6 +144,7 @@ func fetchLatestVersionWithDownloader(ctx context.Context, dl Downloader, versio
 	}
 	body, _, err := dl.ReadAll(ctx, downloader.Request{
 		Purpose:      "awgm-update-check",
+		UserAgent:    appver.UA(),
 		URL:          versionURL,
 		Method:       http.MethodGet,
 		Timeout:      repoTimeout,
