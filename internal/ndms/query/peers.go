@@ -14,6 +14,8 @@ import (
 
 // peerTTL is short because the MetricsPoller refreshes on its own
 // interval (~10s). This TTL mostly serves fast-back-to-back reads.
+// От него зависит допуск дедупа серверов в поллере метрик
+// (metrics.handshakeJitter): его поднимать вместе с этим значением.
 const peerTTL = 8 * time.Second
 
 // PeerStore caches the .wireguard.peer list of /show/interface/{name} —

@@ -2,10 +2,12 @@ package metrics
 
 import (
 	"context"
+	"math"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/hoaxisr/awg-manager/internal/ndms"
 	"github.com/hoaxisr/awg-manager/internal/ndms/query"
 )
 
@@ -294,7 +296,9 @@ func TestMetricsPoller_ServerNilCallback_NoPublish(t *testing.T) {
 	}
 }
 
-func TestMetricsPoller_DedupsUnchangedData(t *testing.T) {
+// F469: туннель публикуется каждый тик и при неизменных данных — событие
+// служит часами графика (точка на событие, скорость по соседним).
+func TestMetricsPoller_TunnelPublishesEveryTick(t *testing.T) {
 	fg := query.NewFakeGetter()
 	fg.SetJSON("/show/interface/Wireguard0", `{"wireguard":{"peer":[{"public-key":"k","rxbytes":100,"txbytes":200,"last-handshake":5,"online":true,"enabled":true}]}}`)
 	peers := query.NewPeerStoreWithTTL(fg, query.NopLogger(), 1*time.Millisecond)
@@ -309,9 +313,50 @@ func TestMetricsPoller_DedupsUnchangedData(t *testing.T) {
 
 	time.Sleep(80 * time.Millisecond)
 
-	evs := pub.Events()
-	if len(evs) != 1 {
-		t.Errorf("dedupe: want 1 event for unchanged data, got %d", len(evs))
+	if evs := pub.Events(); len(evs) < 3 {
+		t.Errorf("неизменный туннель: событий %d, ждали на каждом тике (>=3)", len(evs))
+	}
+}
+
+// F469: сервер сравнивается по абсолютному времени рукопожатия. Растущие
+// «секунды назад» при том же рукопожатии — не изменение (раньше подсказка
+// уходила каждый тик); новые байты — изменение.
+func TestServerDigest_HandshakeAgeIsNotAChange(t *testing.T) {
+	t0 := time.Unix(1_000_000, 0)
+	a := digestPeers([]ndms.Peer{{RxBytes: 1, TxBytes: 2, LastHandshakeSecondsAgo: 10}}, t0)
+	b := digestPeers([]ndms.Peer{{RxBytes: 1, TxBytes: 2, LastHandshakeSecondsAgo: 15}}, t0.Add(5*time.Second))
+	if !a.equal(b) {
+		t.Error("то же рукопожатие 5 с спустя сочтено изменением")
+	}
+	// Тик из кэша PeerStore (TTL 8 с): «секунды назад» те же, что при
+	// чтении, а now на тик позже — это то же рукопожатие.
+	cached := digestPeers([]ndms.Peer{{RxBytes: 1, TxBytes: 2, LastHandshakeSecondsAgo: 10}}, t0.Add(8*time.Second))
+	if !a.equal(cached) {
+		t.Error("данные из кэша PeerStore на следующем тике сочтены новым рукопожатием")
+	}
+	// Целые «секунды назад» пересчитываются в абсолютное время с дрожью в 1 с.
+	jitter := digestPeers([]ndms.Peer{{RxBytes: 1, TxBytes: 2, LastHandshakeSecondsAgo: 16}}, t0.Add(5*time.Second))
+	if !a.equal(jitter) {
+		t.Error("дрожь пересчёта в 1 с сочтена новым рукопожатием")
+	}
+	// Новое рукопожатие (WireGuard — раз в ~2 мин): 120 с после прежнего.
+	c := digestPeers([]ndms.Peer{{RxBytes: 1, TxBytes: 2, LastHandshakeSecondsAgo: 1}}, t0.Add(111*time.Second))
+	if a.equal(c) {
+		t.Error("новое рукопожатие не сочтено изменением")
+	}
+	d := digestPeers([]ndms.Peer{{RxBytes: 9, TxBytes: 2, LastHandshakeSecondsAgo: 15}}, t0.Add(5*time.Second))
+	if a.equal(d) {
+		t.Error("новые байты не сочтены изменением")
+	}
+	offline := digestPeers([]ndms.Peer{{RxBytes: 1, TxBytes: 2, LastHandshakeSecondsAgo: 15, Online: false}}, t0.Add(5*time.Second))
+	onlineA := digestPeers([]ndms.Peer{{RxBytes: 1, TxBytes: 2, LastHandshakeSecondsAgo: 10, Online: true}}, t0)
+	if onlineA.equal(offline) {
+		t.Error("пир ушёл в offline без новых байт — изменение не замечено")
+	}
+	never := digestPeers([]ndms.Peer{{LastHandshakeSecondsAgo: math.MaxInt32}}, t0)
+	never2 := digestPeers([]ndms.Peer{{LastHandshakeSecondsAgo: math.MaxInt32}}, t0.Add(5*time.Second))
+	if !never.equal(never2) {
+		t.Error("«рукопожатий не было» на разных тиках сочтено изменением")
 	}
 }
 
@@ -373,5 +418,28 @@ func TestMetricsPoller_IdleSkipsServersButNotTunnels(t *testing.T) {
 	}
 	if got := fg.Calls("/show/interface/Wireguard10"); got != 0 {
 		t.Errorf("сервер в простое опрошен %d раз, потребителя у этого нет", got)
+	}
+}
+
+// F469: неизменный сервер даёт ОДНУ подсказку — дальше тишина, хотя
+// «секунды назад» у рукопожатия растут.
+func TestMetricsPoller_UnchangedServerHintsOnce(t *testing.T) {
+	fg := query.NewFakeGetter()
+	fg.SetJSON("/show/interface/Wireguard10", `{"wireguard":{"peer":[{"public-key":"k","rxbytes":1,"txbytes":2,"last-handshake":30,"online":true,"enabled":true}]}}`)
+	peers := query.NewPeerStoreWithTTL(fg, query.NopLogger(), 1*time.Millisecond)
+	run := &fakeRunningProvider{}
+	run.Set([]InterfaceRef{{ID: "Wireguard10", IsServer: true}})
+	pub := &fakeMetricsPublisher{}
+	subs := &fakeSubs{count: 1}
+	snap := &fakeSnapshotPub{}
+
+	p := NewWithInterval(peers, pub, run, subs, NopLogger(), 10*time.Millisecond)
+	p.SetServerSnapshotPublisher(snap)
+	p.Start()
+	defer p.Stop()
+
+	time.Sleep(80 * time.Millisecond)
+	if got := snap.Calls(); got != 1 {
+		t.Errorf("неизменный сервер: подсказок %d, ждали 1", got)
 	}
 }
