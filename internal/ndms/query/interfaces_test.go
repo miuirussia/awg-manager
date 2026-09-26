@@ -934,8 +934,8 @@ func TestInterfaceStore_ListAll_DeduplicatesByKernelName_UpWins(t *testing.T) {
 			"state": "up",
 			"summary": {"layer": {"ipv4": "running", "conf": "running"}}
 		},
-		"ISP": {
-			"id": "ISP",
+		"Aaa": {
+			"id": "Aaa",
 			"interface-name": "eth1",
 			"type": "GigabitEthernet",
 			"description": "stale stub",
@@ -943,6 +943,8 @@ func TestInterfaceStore_ListAll_DeduplicatesByKernelName_UpWins(t *testing.T) {
 			"summary": {"layer": {"ipv4": "pending", "conf": "running"}}
 		}
 	}`)
+	// Заглушке нарочно меньший id: победить настоящая запись может только
+	// по правилу Up, а не по порядку id (ревью F475).
 	log := &dedupCaptureLogger{}
 	s := NewInterfaceStore(fg, log)
 
@@ -966,7 +968,7 @@ func TestInterfaceStore_ListAll_DeduplicatesByKernelName_UpWins(t *testing.T) {
 		t.Fatalf("expected 1 warn-log, got %d: %v", len(log.msgs), log.msgs)
 	}
 	msg := log.msgs[0]
-	for _, want := range []string{"duplicate", "eth1", "GigabitEthernet1", "ISP", `kept "GigabitEthernet1"`} {
+	for _, want := range []string{"duplicate", "eth1", "GigabitEthernet1", "Aaa", `kept "GigabitEthernet1"`} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("warn missing %q: %s", want, msg)
 		}
@@ -1279,16 +1281,60 @@ func TestInterfaceStore_PortsKeyedByRecordID(t *testing.T) {
 	if got, err := s.Get(context.Background(), "GigabitEthernet0/0"); err != nil || got == nil {
 		t.Fatalf("Get(GigabitEthernet0/0) = %v, %v — порт не найден по своему id", got, err)
 	}
-	if _, err := s.ListAll(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.ListAll(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if got := fg.BatchPostCalls(); got != 1 {
-		t.Errorf("пакетов %d, ждали 1 — порты спрашиваются повторно", got)
-	}
+	// Имя порта запоминается: запись находится по id (ListAll порты
+	// пропускает, но прочие читатели резолвят их по id).
+	_ = s.ResolveSystemName(context.Background(), "GigabitEthernet0/1")
+	_ = s.ResolveSystemName(context.Background(), "GigabitEthernet0/1")
 	if got := fg.PostSystemNameCalls("GigabitEthernet0/1"); got != 1 {
 		t.Errorf("GigabitEthernet0/1 спрошен %d раз, ждали 1", got)
+	}
+}
+
+// F475, стенд 5.02.A.11: WAN `GigabitEthernet1` (public) и его порт
+// `GigabitEthernet1/0` (Port, без security-level) резолвятся в один eth3,
+// оба не подняты (WAN — PPPoE поверх). Ничья решалась порядком обхода map,
+// и eth3 то был public, то нет — WAN пропадал из списков привязки sing-box.
+// WifiMaster0 (без security-level) и его AccessPoint0 (public) делят ra0.
+// Результат обязан быть одним и тем же на каждом вызове.
+func TestInterfaceStore_ListAll_DedupDeterministic(t *testing.T) {
+	fg := newFakeGetter()
+	fg.SetJSON(ifaceListPath, `{
+		"GigabitEthernet1": {"id":"GigabitEthernet1","interface-name":"ISP","type":"GigabitEthernet","description":"Broadband connection","state":"up","security-level":"public","summary":{"layer":{"ipv4":"pending"}}},
+		"0": {"id":"GigabitEthernet1/0","interface-name":"0","type":"Port"},
+		"WifiMaster0": {"id":"WifiMaster0","interface-name":"WifiMaster0","type":"WifiMaster","state":"up"},
+		"WifiMaster0/AccessPoint0": {"id":"WifiMaster0/AccessPoint0","interface-name":"WifiMaster0/AccessPoint0","type":"AccessPoint","description":"Wi-Fi access point","state":"down","security-level":"public"},
+		"UsbLte0": {"id":"UsbLte0","type":"UsbLte","description":"первый"},
+		"UsbLte0/Sub": {"id":"UsbLte0/Sub","type":"UsbLte","description":"второй"}
+	}`)
+	fg.SetPostSystemName("UsbLte0", `"usb0"`)
+	fg.SetPostSystemName("UsbLte0/Sub", `"usb0"`)
+	fg.SetPostSystemName("GigabitEthernet1", `"eth3"`)
+	fg.SetPostSystemName("GigabitEthernet1/0", `"eth3"`)
+	fg.SetPostSystemName("WifiMaster0", `"ra0"`)
+	fg.SetPostSystemName("WifiMaster0/AccessPoint0", `"ra0"`)
+	s := NewInterfaceStore(fg, NopLogger())
+
+	for i := 0; i < 20; i++ {
+		all, err := s.ListAll(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]ndms.AllInterface{}
+		for _, a := range all {
+			got[a.Name] = a
+		}
+		if e := got["eth3"]; e.SecurityLevel != "public" || e.Type != "GigabitEthernet" {
+			t.Fatalf("вызов %d: eth3 = %+v, ждали WAN GigabitEthernet public", i, e)
+		}
+		if r := got["ra0"]; r.SecurityLevel != "public" || r.Type != "AccessPoint" {
+			t.Fatalf("вызов %d: ra0 = %+v, ждали AccessPoint public", i, r)
+		}
+		// Полная ничья (оба не подняты, без security-level) — меньший id.
+		if u := got["usb0"]; u.Label != "первый" {
+			t.Fatalf("вызов %d: usb0 = %+v, ждали запись UsbLte0", i, u)
+		}
+	}
+	if got := fg.PostSystemNameCalls("GigabitEthernet1/0"); got != 0 {
+		t.Errorf("порт резолвится в ListAll (%d раз) — его там быть не должно", got)
 	}
 }

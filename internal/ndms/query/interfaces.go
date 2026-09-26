@@ -662,14 +662,27 @@ func (s *InterfaceStore) ListWAN(ctx context.Context) ([]wan.Interface, error) {
 // Sorted by Name for deterministic UI rendering. Uses
 // ResolveSystemName for kernel-name lookup (see notes on ListWAN).
 //
+// Порты коммутатора (type Port) пропускаются: это не отдельное устройство
+// ядра — NDMS резолвит их в имя родителя (`GigabitEthernet1/0` → eth3, как
+// сам `GigabitEthernet1`), security-level у них нет.
+//
 // Deduplicates by kernel Name: if multiple NDMS entries resolve to the
 // same kernel ifname (e.g. a stale stub from a failed bootstrap fetch
-// coexists with the real entry), the Up=true entry wins; on a tie the
-// first seen is kept. Collisions are warn-logged with both NDMS IDs.
+// coexists with the real entry, or WifiMaster0 and its AccessPoint0 both
+// map to ra0), the winner is chosen by preferCandidate — the same one on
+// every call. До F475 ничья решалась порядком обхода map, и у `eth3`
+// security-level прыгал между public WAN и пустым портом — WAN случайно
+// пропадал из списков привязки sing-box (они берут только public).
 func (s *InterfaceStore) ListAll(ctx context.Context) ([]ndms.AllInterface, error) {
-	all, err := s.List(ctx)
+	listed, err := s.List(ctx)
 	if err != nil {
 		return nil, err
+	}
+	all := listed[:0]
+	for _, iface := range listed {
+		if iface.Type != "Port" {
+			all = append(all, iface)
+		}
 	}
 	ids := make([]string, len(all))
 	for i, iface := range all {
@@ -704,7 +717,7 @@ func (s *InterfaceStore) ListAll(ctx context.Context) ([]ndms.AllInterface, erro
 		}
 		prevWinner := winnerID[kernelName]
 		kept, dropped := prevWinner, iface.ID
-		if candidate.Up && !existing.Up {
+		if preferCandidate(candidate, iface.ID, existing, prevWinner) {
 			seen[kernelName] = candidate
 			winnerID[kernelName] = iface.ID
 			kept, dropped = iface.ID, prevWinner
@@ -717,6 +730,18 @@ func (s *InterfaceStore) ListAll(ctx context.Context) ([]ndms.AllInterface, erro
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
+}
+
+// preferCandidate — побеждает ли кандидат (id) текущего победителя (winID)
+// за одно имя ядра: поднятый, затем с security-level, затем меньший id.
+func preferCandidate(c ndms.AllInterface, id string, win ndms.AllInterface, winID string) bool {
+	if c.Up != win.Up {
+		return c.Up
+	}
+	if (c.SecurityLevel != "") != (win.SecurityLevel != "") {
+		return c.SecurityLevel != ""
+	}
+	return id < winID
 }
 
 // === Hook-side write API (called from events.Dispatcher) ===

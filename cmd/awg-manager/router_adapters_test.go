@@ -21,6 +21,9 @@ func TestFilterBindable(t *testing.T) {
 		{Name: "ppp0", SecurityLevel: "public", Type: "PPPoE"},                     // occupied — drop
 		{Name: "Home", SecurityLevel: "private", Type: "Bridge"},                   // LAN bridge — drop (private)
 		{Name: "opkgtun0", SecurityLevel: "public", Type: "Wireguard"},             // managed AWG — drop
+		{Name: "ra0", SecurityLevel: "public", Type: "AccessPoint"},                // Wi-Fi AP, public у NDMS — drop
+		{Name: "rai0", SecurityLevel: "public", Type: "WifiMaster"},                // радио — drop
+		{Name: "apcli0", SecurityLevel: "public", Type: "WifiStation"},             // Wi-Fi-клиент как выход — keep
 	}
 	native := map[string]bool{"t2s0": true, "t2s2": true}
 	occupied := map[string]bool{"ppp0": true, "t2s2": true}
@@ -30,12 +33,12 @@ func TestFilterBindable(t *testing.T) {
 	for _, g := range got {
 		names[g.Name] = true
 	}
-	for _, want := range []string{"t2s0", "ipsec0"} {
+	for _, want := range []string{"t2s0", "ipsec0", "apcli0"} {
 		if !names[want] {
 			t.Errorf("expected %q kept, missing from %v", want, names)
 		}
 	}
-	for _, drop := range []string{"t2s1", "t2s2", "ppp0", "Home", "opkgtun0"} {
+	for _, drop := range []string{"t2s1", "t2s2", "ppp0", "Home", "opkgtun0", "ra0", "rai0"} {
 		if names[drop] {
 			t.Errorf("expected %q dropped, still present in %v", drop, names)
 		}

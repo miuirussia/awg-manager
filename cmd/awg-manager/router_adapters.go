@@ -355,8 +355,16 @@ func (a *routerWANInterfaceAdapter) ListAllBindable(ctx context.Context) ([]rout
 func filterBindable(ifaces []ndms.AllInterface, native, occupied map[string]bool) []router.WANInterfaceInfo {
 	out := make([]router.WANInterfaceInfo, 0, len(ifaces))
 	for _, iface := range ifaces {
-		// Egress only: drops LAN bridges, Wi-Fi APs, switch ports, LAN VLANs.
+		// Egress only: drops LAN bridges, switch ports, LAN VLANs.
 		if iface.SecurityLevel != "public" {
+			continue
+		}
+		// Точка доступа (и радио под ней) — не выход в интернет, хотя NDMS
+		// ставит ей security-level public (стенд 5.02.A.11: AccessPoint0
+		// public). После детерминированного дедупа ListAll (F475) ra0 шёл
+		// бы в список привязки всегда. Wi-Fi-клиент (WifiStation) — выход,
+		// его оставляем.
+		if iface.Type == "AccessPoint" || iface.Type == "WifiMaster" {
 			continue
 		}
 		// Already bound by an existing direct outbound — skip the duplicate.
