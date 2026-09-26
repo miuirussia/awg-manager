@@ -686,6 +686,35 @@ func rciToWireguardServer(iface rciWireguardDetail) ndms.WireguardServer {
 	return server
 }
 
+// WithLivePeers накладывает на сервер из кэша списка (TTL 5 мин) живые поля
+// пиров из PeerStore: rx/tx, рукопожатие, online, endpoint. Список не знает о
+// трафике — его сбрасывают только хуки NDMS и мутации, и без наложения
+// страница серверов показывала счётчики до 5 минут давности (F476).
+// Пир, которого нет в live, остаётся как был.
+func WithLivePeers(srv ndms.WireguardServer, live []ndms.Peer) ndms.WireguardServer {
+	byKey := make(map[string]ndms.Peer, len(live))
+	for _, p := range live {
+		byKey[p.PublicKey] = p
+	}
+	peers := make([]ndms.WireguardServerPeer, len(srv.Peers))
+	copy(peers, srv.Peers)
+	for i := range peers {
+		p, ok := byKey[peers[i].PublicKey]
+		if !ok {
+			continue
+		}
+		peers[i].RxBytes = p.RxBytes
+		peers[i].TxBytes = p.TxBytes
+		peers[i].LastHandshake = FormatHandshakeSecondsAgo(p.LastHandshakeSecondsAgo)
+		peers[i].Online = p.Online
+		if p.RemoteEndpointAddress != "" || p.RemotePort != 0 {
+			peers[i].Endpoint = fmt.Sprintf("%s:%d", p.RemoteEndpointAddress, p.RemotePort)
+		}
+	}
+	srv.Peers = peers
+	return srv
+}
+
 func rciRCToServerConfig(rc rciRCInterface, publicKey string) ndms.WireguardServerConfig {
 	cfg := ndms.WireguardServerConfig{PublicKey: publicKey}
 	if rc.IP != nil {

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/hoaxisr/awg-manager/internal/ndms"
 )
 
 // sampleWGInterfaceListJSON — two WG interfaces plus an unrelated ethernet.
@@ -842,5 +844,26 @@ func TestWGServerStore_List_SkipsVanishedInterface(t *testing.T) {
 		if srv.ID == "Wireguard1" {
 			t.Fatalf("пропавший Wireguard1 попал в список: %+v", srv)
 		}
+	}
+}
+
+// F476: живые поля пиров накладываются по публичному ключу; пир без живых
+// данных остаётся как был, исходный срез не меняется.
+func TestWithLivePeers(t *testing.T) {
+	srv := ndms.WireguardServer{ID: "Wireguard0", Peers: []ndms.WireguardServerPeer{
+		{PublicKey: "A", RxBytes: 1, Endpoint: "1.1.1.1:1", Enabled: true},
+		{PublicKey: "B", RxBytes: 2},
+	}}
+	got := WithLivePeers(srv, []ndms.Peer{{PublicKey: "A", RxBytes: 50, TxBytes: 7, LastHandshakeSecondsAgo: 30, Online: true, RemoteEndpointAddress: "2.2.2.2", RemotePort: 51820}})
+
+	a := got.Peers[0]
+	if a.RxBytes != 50 || a.TxBytes != 7 || !a.Online || a.Endpoint != "2.2.2.2:51820" || a.LastHandshake == "" || !a.Enabled {
+		t.Errorf("A = %+v — живые поля не наложены или затёрт Enabled", a)
+	}
+	if got.Peers[1].RxBytes != 2 {
+		t.Errorf("B = %+v — пира без живых данных менять нельзя", got.Peers[1])
+	}
+	if srv.Peers[0].RxBytes != 1 {
+		t.Error("исходный срез изменён — список из кэша общий для всех читателей")
 	}
 }

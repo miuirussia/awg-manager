@@ -539,6 +539,17 @@ func (s *Service) GetStats(ctx context.Context, id string) (*ManagedServerStats,
 	if err != nil {
 		return nil, fmt.Errorf("get runtime data: %w", err)
 	}
+	// WGServers.Get — кэш на 30 с; живые поля пиров — из PeerStore, его
+	// держит тёплым поллер метрик (тот же класс, что F476 у системных
+	// серверов). Сбой чтения оставляет данные кэша и не логируется — поллер
+	// пишет ту же ошибку на каждом тике.
+	srv := *wgServer
+	if s.queries.Peers != nil {
+		if live, err := s.queries.Peers.GetPeers(ctx, server.InterfaceName); err == nil {
+			srv = query.WithLivePeers(srv, live)
+		}
+	}
+	wgServer = &srv
 
 	peers := make([]ManagedPeerStats, 0, len(wgServer.Peers))
 	for _, p := range wgServer.Peers {

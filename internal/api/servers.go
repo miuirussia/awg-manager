@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/hoaxisr/awg-manager/internal/events"
@@ -364,6 +365,7 @@ func (h *ServersHandler) writeAll(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, err.Error(), "LIST_FAILED")
 		return
 	}
+	h.overlayLivePeers(ctx, list)
 	enriched := make([]WireguardServerDTO, len(list))
 	for i, srv := range list {
 		enriched[i] = h.enrichServerDTO(ctx, srv)
@@ -380,6 +382,29 @@ func (h *ServersHandler) writeAll(w http.ResponseWriter, r *http.Request) {
 		"managedStats": managedStats,
 	}
 	response.Success(w, payload)
+}
+
+// overlayLivePeers — живые поля пиров поверх кэша списка серверов (F476).
+// Пиров держит PeerStore (TTL 8 с), при открытой панели его греет поллер
+// метрик, так что обычно это ноль запросов к роутеру; при холодном кэше
+// чтения идут параллельно, и батчер склеивает их в один POST. Сбой чтения
+// оставляет данные списка и не логируется: поллер пишет ту же ошибку по
+// этому интерфейсу на каждом тике.
+func (h *ServersHandler) overlayLivePeers(ctx context.Context, list []ndms.WireguardServer) {
+	if h.queries == nil || h.queries.Peers == nil {
+		return
+	}
+	var wg sync.WaitGroup
+	for i := range list {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if live, err := h.queries.Peers.GetPeers(ctx, list[i].ID); err == nil {
+				list[i] = query.WithLivePeers(list[i], live)
+			}
+		}(i)
+	}
+	wg.Wait()
 }
 
 // GetAll returns the composite servers snapshot (list + managed + stats + wanIP).
