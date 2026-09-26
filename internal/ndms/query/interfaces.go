@@ -127,9 +127,13 @@ type InterfaceStore struct {
 	mu        sync.RWMutex
 	byID      map[string]*ndms.Interface
 	startedAt map[string]time.Time
-	// sys is a derived view: NDMSName → kernel-system-name. Built
-	// from byID on every mutation. Read paths take this under s.mu
-	// (RLock) — no separate lock.
+	// sysNames — имена ядра, полученные резолвером, по NDMS-id. Отдельно от
+	// byID, потому что InvalidateAll и OnCreated строят записи заново из
+	// ответа RCI, а `interface-name` там не имя ядра (5.02.A.11: NDMS-id
+	// или подпись, `Bridge0` → `Home`). Жило бы в записи — терялось бы при
+	// каждом сбросе, и следующий ListAll снова спрашивал бы все ~20
+	// интерфейсов (F473). Снимается на ifdestroyed.
+	sysNames map[string]string
 }
 
 // NewInterfaceStore constructs a new InterfaceStore. Bootstrap is
@@ -143,6 +147,7 @@ func NewInterfaceStore(g Getter, log Logger) *InterfaceStore {
 		log:       log,
 		byID:      make(map[string]*ndms.Interface),
 		startedAt: make(map[string]time.Time),
+		sysNames:  make(map[string]string),
 	}
 }
 
@@ -409,21 +414,7 @@ func (s *InterfaceStore) ResolveSystemName(ctx context.Context, ndmsName string)
 	if err := s.ensureBootstrap(ctx); err != nil {
 		return ""
 	}
-	s.mu.RLock()
-	var sysName string
-	if iface, ok := s.byID[ndmsName]; ok {
-		sysName = iface.SystemName
-	}
-	s.mu.RUnlock()
-
-	// Trustworthy cached value: non-empty, distinct from NDMS id, looks
-	// like a kernel name, AND exists in the running kernel. The last
-	// check defends against firmware quirks where the parser filter has
-	// already nominally accepted a value but the device is missing
-	// (hotplug races, label-typed values that happen to be lowercase).
-	if sysName != "" && sysName != ndmsName &&
-		looksLikeKernelIfname(sysName) &&
-		kernelIfaceExists(sysName) {
+	if sysName := s.cachedSystemName(ndmsName); trustedSystemName(ndmsName, sysName) {
 		return sysName
 	}
 
@@ -432,12 +423,78 @@ func (s *InterfaceStore) ResolveSystemName(ctx context.Context, ndmsName string)
 	if resolved == "" {
 		return ""
 	}
+	s.rememberSystemName(ndmsName, resolved)
+	return resolved
+}
+
+// cachedSystemName — запомненное резолвером имя, иначе `interface-name`
+// из ответа RCI.
+func (s *InterfaceStore) cachedSystemName(ndmsName string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if name, ok := s.sysNames[ndmsName]; ok {
+		return name
+	}
+	if iface, ok := s.byID[ndmsName]; ok {
+		return iface.SystemName
+	}
+	return ""
+}
+
+// rememberSystemName запоминает имя только для интерфейса, который есть в
+// сторе: ifdestroyed между запросом и ответом резолвера иначе оставил бы
+// имя удалённого интерфейса.
+func (s *InterfaceStore) rememberSystemName(ndmsName, resolved string) {
 	s.mu.Lock()
 	if iface, ok := s.byID[ndmsName]; ok {
+		s.sysNames[ndmsName] = resolved
 		iface.SystemName = resolved
 	}
 	s.mu.Unlock()
-	return resolved
+}
+
+// trustedSystemName: non-empty, distinct from NDMS id, looks like a kernel
+// name, AND exists in the running kernel. The last check defends against
+// firmware quirks where the parser filter has already nominally accepted a
+// value but the device is missing (hotplug races, label-typed values that
+// happen to be lowercase).
+func trustedSystemName(ndmsName, sysName string) bool {
+	return sysName != "" && sysName != ndmsName &&
+		looksLikeKernelIfname(sysName) &&
+		kernelIfaceExists(sysName)
+}
+
+// resolveSystemNames разрешает ненадёжные имена ОДНИМ пакетным POST —
+// ListAll/ListWAN иначе шли бы резолвером по одному интерфейсу подряд
+// (стенд: 22 запроса, ~0.6 с). Сбой пакета не фатален: ResolveSystemName
+// в цикле вызывающего доспросит по одному.
+func (s *InterfaceStore) resolveSystemNames(ctx context.Context, ids []string) {
+	var todo []string
+	for _, id := range ids {
+		if !trustedSystemName(id, s.cachedSystemName(id)) {
+			todo = append(todo, id)
+		}
+	}
+	if len(todo) < 2 {
+		return
+	}
+	batch := make([]any, len(todo))
+	for i, id := range todo {
+		batch[i] = transport.ShowQuery([]string{"interface", "system-name"}, map[string]any{"name": id})
+	}
+	raw, err := s.getter.Post(ctx, batch)
+	if err != nil {
+		return
+	}
+	var items []json.RawMessage
+	if json.Unmarshal(raw, &items) != nil || len(items) != len(todo) {
+		return
+	}
+	for i, item := range items {
+		if name := parseSystemName(item); name != "" {
+			s.rememberSystemName(todo[i], name)
+		}
+	}
 }
 
 // fetchSystemName resolves an NDMS interface id to its kernel name via
@@ -467,6 +524,11 @@ func (s *InterfaceStore) fetchSystemName(ctx context.Context, ndmsName string) s
 	if err != nil {
 		return ""
 	}
+	return parseSystemName(raw)
+}
+
+// parseSystemName разбирает ответ резолвера (одиночный или элемент пакета).
+func parseSystemName(raw []byte) string {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
 		return ""
@@ -565,6 +627,13 @@ func (s *InterfaceStore) ListWAN(ctx context.Context) ([]wan.Interface, error) {
 	if err != nil {
 		return nil, err
 	}
+	var public []string
+	for _, iface := range all {
+		if iface.SecurityLevel == "public" {
+			public = append(public, iface.ID)
+		}
+	}
+	s.resolveSystemNames(ctx, public)
 	out := make([]wan.Interface, 0, len(all))
 	for _, iface := range all {
 		if iface.SecurityLevel != "public" {
@@ -602,6 +671,11 @@ func (s *InterfaceStore) ListAll(ctx context.Context) ([]ndms.AllInterface, erro
 	if err != nil {
 		return nil, err
 	}
+	ids := make([]string, len(all))
+	for i, iface := range all {
+		ids[i] = iface.ID
+	}
+	s.resolveSystemNames(ctx, ids)
 	seen := make(map[string]ndms.AllInterface, len(all))
 	winnerID := make(map[string]string, len(all))
 	for _, iface := range all {
@@ -703,6 +777,7 @@ func (s *InterfaceStore) OnDestroyed(id string) {
 	s.mu.Lock()
 	delete(s.byID, id)
 	delete(s.startedAt, id)
+	delete(s.sysNames, id)
 	s.mu.Unlock()
 }
 
@@ -864,6 +939,11 @@ func (s *InterfaceStore) InvalidateAll() {
 	}
 	s.byID = nextByID
 	s.startedAt = nextStartedAt
+	for id := range s.sysNames {
+		if _, ok := nextByID[id]; !ok {
+			delete(s.sysNames, id)
+		}
+	}
 	s.booted.Store(true)
 }
 
@@ -883,7 +963,11 @@ func (s *InterfaceStore) fetchListMap(ctx context.Context) (map[string]ndms.Inte
 			s.log.Warnf("parse interface %s: %v", id, err)
 			continue
 		}
-		out[id] = iface
+		// Ключ — id записи, а не ключ ответа: порты коммутатора NDMS
+		// отдаёт под ключами "0".."4" с id `GigabitEthernet0/0`… (стенд
+		// 5.02.A.11). По ключу ответа их не находили ни Get, ни запоминание
+		// имени резолвера — порты спрашивались на каждом ListAll (F473).
+		out[iface.ID] = iface
 	}
 	return out, nil
 }

@@ -102,6 +102,7 @@ type FakeGetter struct {
 	postSystemName      map[string][]byte
 	postSystemNameErr   map[string]error
 	postSystemNameCalls map[string]int
+	batchPosts          int
 
 	postHandler func(payload any) (json.RawMessage, error)
 }
@@ -278,6 +279,13 @@ func (f *FakeGetter) SetPostSystemNameError(name string, err error) {
 	f.mu.Unlock()
 }
 
+// BatchPostCalls — сколько пакетных POST (массив команд) пришло.
+func (f *FakeGetter) BatchPostCalls() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.batchPosts
+}
+
 // PostSystemNameCalls returns how many Post calls hit the system-name
 // resolver with the given NDMS id.
 func (f *FakeGetter) PostSystemNameCalls(name string) int {
@@ -320,7 +328,23 @@ func (f *FakeGetter) PostInterfaceCalls(name string) int {
 // Post implements Getter.Post. ShowInterface-shaped payloads dispatch on
 // the embedded "name"; system-name resolver payloads dispatch on the
 // embedded id; everything else falls through to postHandler.
-func (f *FakeGetter) Post(_ context.Context, payload any) (json.RawMessage, error) {
+func (f *FakeGetter) Post(ctx context.Context, payload any) (json.RawMessage, error) {
+	// Пакет команд, как у NDMS: каждый элемент отвечается отдельно, ответ —
+	// массив в том же порядке.
+	if batch, ok := payload.([]any); ok {
+		f.mu.Lock()
+		f.batchPosts++
+		f.mu.Unlock()
+		items := make([]json.RawMessage, len(batch))
+		for i, cmd := range batch {
+			item, err := f.Post(ctx, cmd)
+			if err != nil {
+				return nil, err
+			}
+			items[i] = item
+		}
+		return json.Marshal(items)
+	}
 	if name := extractShowSystemName(payload); name != "" {
 		f.mu.Lock()
 		if f.postSystemNameCalls == nil {
