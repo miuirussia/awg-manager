@@ -365,43 +365,23 @@ func TestAuthLogin_EntwareUnavailable_503NotCounted(t *testing.T) {
 	}
 }
 
-// Верный, но слабый пароль Entware — 403 без сессии. Проверяется ПОСЛЕ
-// верификации: неверная пара с тем же паролем получает обычный 401.
-func TestAuthLogin_WeakEntwarePasswordRefused(t *testing.T) {
+// Пароль root из старой инструкции Entware допускается после успешной
+// проверки учётных данных.
+func TestAuthLogin_DefaultEntwarePasswordAccepted(t *testing.T) {
 	h, _ := newLoginHandlerForTest(t, &fakeKeenetic{}, &fakeEntware{})
-	rr := doLoginAs(t, h, "entware", weakEntwarePassword)
-	if rr.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403, body=%s", rr.Code, rr.Body.String())
+	rr := doLoginAs(t, h, "entware", "keenetic")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200, body=%s", rr.Code, rr.Body.String())
 	}
-	if !strings.Contains(rr.Body.String(), "Пароль слишком слабый, такая авторизация невозможна") {
-		t.Fatalf("unexpected message, body=%s", rr.Body.String())
-	}
+
+	var sessionSet bool
 	for _, c := range rr.Result().Cookies() {
 		if c.Name == auth.SessionCookie {
-			t.Fatal("session cookie set for a refused weak password")
+			sessionSet = true
 		}
 	}
-
-	// 403 подтверждает верную пару — перебор логинов с этим паролем
-	// обязан упираться в троттлинг, как и обычные отказы.
-	for i := 0; i < 4; i++ {
-		if rr := doLoginAs(t, h, "entware", weakEntwarePassword); rr.Code != http.StatusForbidden {
-			t.Fatalf("attempt %d: status = %d, want 403", i+2, rr.Code)
-		}
-	}
-	if rr := doLoginAs(t, h, "entware", weakEntwarePassword); rr.Code != http.StatusTooManyRequests {
-		t.Fatalf("6th weak-password attempt: status = %d, want 429 (403 must count)", rr.Code)
-	}
-
-	h, _ = newLoginHandlerForTest(t, &fakeKeenetic{}, &fakeEntware{err: auth.ErrInvalidCredentials})
-	if rr := doLoginAs(t, h, "entware", weakEntwarePassword); rr.Code != http.StatusUnauthorized {
-		t.Fatalf("wrong credentials with the weak password: status = %d, want 401", rr.Code)
-	}
-
-	// Через роутер тот же пароль — забота роутера, не наша.
-	h, _ = newLoginHandlerForTest(t, &fakeKeenetic{}, &fakeEntware{})
-	if rr := doLoginAs(t, h, "router", weakEntwarePassword); rr.Code != http.StatusOK {
-		t.Fatalf("router login with the same password: status = %d, want 200", rr.Code)
+	if !sessionSet {
+		t.Fatal("session cookie not set after successful login")
 	}
 }
 
