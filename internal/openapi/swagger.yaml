@@ -9679,8 +9679,7 @@ paths:
         HttpOnly session cookie awg_session. Every failed attempt in which credentials
         were checked is delayed 300ms and counted; after 5 such failures per client
         IP the endpoint responds 429 for 30 seconds. Unavailable router or Entware
-        shadow db is not counted (503). A correct Entware password that is too weak
-        is refused with 403.
+        shadow db is not counted (503).
       parameters:
       - description: Login, password and method
         in: body
