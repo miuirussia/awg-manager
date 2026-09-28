@@ -81,16 +81,6 @@ const (
 	loginMethodEntware = "entware"
 )
 
-// weakEntwarePassword — пароль root из инструкции по установке Entware на
-// Keenetic. Способ входа выбирается на форме без тумблера в настройках, и
-// с этим паролем панель (а в ней веб-терминал с root) открылась бы любому,
-// кто её видит, — перебирать нечего, пароль известен заранее.
-const weakEntwarePassword = "keenetic"
-
-// errWeakEntwarePassword — пароль верный, но вход им запрещён. Наружу
-// уходит без слов «по умолчанию»: это подсказка, какую учётку пробовать по SSH.
-var errWeakEntwarePassword = errors.New("weak entware password")
-
 // LoginRequest is the request body for login.
 type LoginRequest struct {
 	Login    string `json:"login"`
@@ -107,7 +97,7 @@ type LoginRequest struct {
 // notifications and no router lockout).
 //
 //	@Summary		Login
-//	@Description	Authenticates by the chosen method (router — Keenetic credentials, the default; entware — Entware system credentials verified locally); sets HttpOnly session cookie awg_session. Every failed attempt in which credentials were checked is delayed 300ms and counted; after 5 such failures per client IP the endpoint responds 429 for 30 seconds. Unavailable router or Entware shadow db is not counted (503). A correct Entware password that is too weak is refused with 403.
+//	@Description	Authenticates by the chosen method (router — Keenetic credentials, the default; entware — Entware system credentials verified locally); sets HttpOnly session cookie awg_session. Every failed attempt in which credentials were checked is delayed 300ms and counted; after 5 such failures per client IP the endpoint responds 429 for 30 seconds. Unavailable router or Entware shadow db is not counted (503).
 //	@Tags			auth
 //	@Accept			json
 //	@Produce		json
@@ -161,10 +151,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		err = h.keenetic.Authenticate(r.Context(), req.Login, req.Password)
 	case loginMethodEntware:
 		err = h.entware.Verify(req.Login, req.Password)
-		// После проверки, а не до: чужому логину с этим паролем — обычный 401.
-		if err == nil && req.Password == weakEntwarePassword {
-			err = errWeakEntwarePassword
-		}
 	default:
 		response.BadRequest(w, "unknown login method")
 		return
@@ -212,12 +198,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 // the log only.
 func (h *AuthHandler) finishFailedLogin(w http.ResponseWriter, login, method, clientIP string, err error) {
 	switch {
-	case errors.Is(err, errWeakEntwarePassword):
-		// Засчитывается: 403 подтверждает верную пару, и без счётчика по нему
-		// бесплатно перебирались бы логины с этим паролем.
-		h.registerFailure(clientIP)
-		h.log.Warn("login", login, "Login refused: Entware password too weak")
-		response.ErrorWithStatus(w, http.StatusForbidden, "Пароль слишком слабый, такая авторизация невозможна", "WEAK_PASSWORD")
 	case errors.Is(err, auth.ErrEntwareUnavailable):
 		h.log.Warn("login", login, "Login failed: "+err.Error())
 		response.ErrorWithStatus(w, http.StatusServiceUnavailable, "Вход через Entware недоступен", "ENTWARE_UNAVAILABLE")
