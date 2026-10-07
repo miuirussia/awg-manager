@@ -1755,6 +1755,7 @@
 	"singbox_edit_extra_ports": "Additional ports / ranges",
 	"singbox_edit_anti_dpi": "Anti-DPI (ClientHello fragmentation)",
 	"singbox_edit_egress_hint": "Forces this proxy’s dial through the selected uplink (modem, WAN, Wi‑Fi).",
+	"singbox_edit_resolve_ip": "Refresh IP",
 	"subscriptions_headers_preset_comment": "Fill in only the lines you need. Empty ones are ignored on save.",
 	"subscriptions_headers_preset_full": "Full headers template",
 	"subscriptions_headers_replace_confirm": "Replace the current headers with the preset?",

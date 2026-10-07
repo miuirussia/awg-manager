@@ -356,7 +356,7 @@
 				<section class="card tunnel-section">
 					<SettingsSectionLabel label="TLS" icon={Lock} tone="blue" header />
 					<div class="tls-resolve">
-						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>Обновить IP</Button>
+						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>{m.singbox_edit_resolve_ip()}</Button>
 						{#if tlsResolvedIPs.length}<span>IP: {tlsResolvedIPs.join(', ')}</span>{/if}
 						{#if tlsResolveError}<span class="error-msg">{tlsResolveError}</span>{/if}
 					</div>
@@ -450,7 +450,7 @@
 				<section class="card tunnel-section">
 					<SettingsSectionLabel label="TLS" icon={Lock} tone="blue" header />
 					<div class="tls-resolve">
-						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>Обновить IP</Button>
+						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>{m.singbox_edit_resolve_ip()}</Button>
 						{#if tlsResolvedIPs.length}<span>IP: {tlsResolvedIPs.join(', ')}</span>{/if}
 						{#if tlsResolveError}<span class="error-msg">{tlsResolveError}</span>{/if}
 					</div>
@@ -596,7 +596,7 @@
 				<section class="card tunnel-section">
 					<SettingsSectionLabel label="TLS" icon={Lock} tone="blue" header />
 					<div class="tls-resolve">
-						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>Обновить IP</Button>
+						<Button variant="secondary" size="sm" type="button" onclick={resolveTLS} loading={resolvingTLS}>{m.singbox_edit_resolve_ip()}</Button>
 						{#if tlsResolvedIPs.length}<span>IP: {tlsResolvedIPs.join(', ')}</span>{/if}
 						{#if tlsResolveError}<span class="error-msg">{tlsResolveError}</span>{/if}
 					</div>
