@@ -1810,6 +1810,7 @@
 	"singbox_edit_mode_form": "Форма",
 	"singbox_edit_json_hint": "Любые опции outbound sing-box, в том числе без поля в форме. Тег задаётся в форме. При сохранении конфиг проверяется через sing-box check; если нет udp_over_tcp (naive) или disable_chrome_parrot (hysteria2), сервер может добавить их сам.",
 	"singbox_edit_json_not_object": "Ожидается JSON-объект",
+	"singbox_edit_resolve_ip": "Обновить IP",
 	"subscriptions_headers_preset_comment": "Заполните только нужные строки. Пустые игнорируются при сохранении.",
 	"subscriptions_headers_preset_full": "Полный шаблон заголовков",
 	"subscriptions_headers_replace_confirm": "Заменить текущие заголовки пресетом?",
