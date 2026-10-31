@@ -200,7 +200,7 @@ func splitBuildRevision(version string) (base string, rev int, ok bool) {
 // Upgrade downloads the IPK from downloadURL and launches opkg install in a
 // detached process.
 func Upgrade(ctx context.Context, downloadURL string) error {
-	return upgradeWithDownloader(ctx, downloadURL, "", newDefaultDownloader())
+	return upgradeWithDownloader(ctx, downloadURL, "", newDefaultDownloader(), nil)
 }
 
 var startDetachedUpgrade = func(ipkPath string) error {
