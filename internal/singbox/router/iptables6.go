@@ -146,7 +146,8 @@ type V6Spec struct {
 	// BypassCIDRs — IPv6-часть пользовательских исключений по подсетям.
 	// Ранний RETURN в начале обеих цепочек, ДО перехвата DNS — та же
 	// семантика полного обхода, что у RestoreInputSpec.BypassCIDRs.
-	BypassCIDRs []string
+	BypassCIDRs   []string
+	BypassDevices []string
 	// BypassGeoIPSet — рядом с ними встаёт RETURN по набору AWGM-BYPASS6.
 	// Набор обязан существовать до ip6tables-restore.
 	BypassGeoIPSet bool
@@ -280,6 +281,7 @@ func emitUplinkReturns6(b *strings.Builder, chain string, spec V6Spec) {
 // emitUserBypass6 — ранние RETURN'ы полного обхода: пользовательские подсети
 // и geoip-набор. В начале цепочки, до перехвата DNS, как и в v4.
 func emitUserBypass6(b *strings.Builder, chain string, spec V6Spec) {
+	emitDeviceBypassReturns(b, chain, spec.BypassDevices)
 	for _, cidr := range spec.BypassCIDRs {
 		fmt.Fprintf(b, "-A %s -d %s -j RETURN\n", chain, cidr)
 	}
@@ -594,6 +596,7 @@ func buildV6Spec(sr storage.SingboxRouterSettings, mark string, policyMode bool,
 		BypassUDPPorts: bypassUDP,
 		BypassTCPPorts: bypassTCP,
 		BypassCIDRs:    bypassCIDRs,
+		BypassDevices:  sr.BypassDevices,
 		BypassGeoIPSet: len(sr.BypassGeoIPTags) > 0,
 	}
 	if spec.MatchAll {
@@ -983,7 +986,7 @@ case "$table" in mangle|nat) ;; *) exit 0 ;; esac
 IP6T=%[2]s
 [ -x "$IP6T" ] || exit 0
 KREL="$(uname -r)"
-for mod in xt_TPROXY xt_mark xt_conntrack xt_dscp xt_set; do
+for mod in xt_TPROXY xt_mark xt_conntrack xt_dscp xt_set xt_mac; do
   grep -q "^${mod} " /proc/modules 2>/dev/null && continue
   [ -f "/lib/modules/${KREL}/${mod}.ko" ] && insmod "/lib/modules/${KREL}/${mod}.ko" 2>/dev/null || true
 done

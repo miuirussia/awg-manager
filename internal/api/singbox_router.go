@@ -176,16 +176,17 @@ func (h *SingboxRouterHandler) PutSettings(w http.ResponseWriter, r *http.Reques
 	// любую правку настроек отказом TUN_ADDR_LOCKED.
 	var body struct {
 		storage.SingboxRouterSettings
-		FakeIPPool6     *string `json:"fakeipPool6"`
-		InterceptFamily *string `json:"interceptFamily"`
-		FakeIPTunAddr4  *string `json:"fakeipTunAddr4"`
+		FakeIPPool6     *string   `json:"fakeipPool6"`
+		InterceptFamily *string   `json:"interceptFamily"`
+		FakeIPTunAddr4  *string   `json:"fakeipTunAddr4"`
+		BypassDevices   *[]string `json:"bypassDevices"`
 	}
 	if err := decodeBody(r, &body); err != nil {
 		response.BadRequest(w, err.Error())
 		return
 	}
 	sr := body.SingboxRouterSettings
-	if body.FakeIPPool6 == nil || body.InterceptFamily == nil || body.FakeIPTunAddr4 == nil {
+	if body.FakeIPPool6 == nil || body.InterceptFamily == nil || body.FakeIPTunAddr4 == nil || body.BypassDevices == nil {
 		// Absent = не менять: подставляем текущее значение (нормализация
 		// возвращает pool6 дословно, включая "").
 		cur, err := h.svc.GetSettings(r.Context())
@@ -196,6 +197,7 @@ func (h *SingboxRouterHandler) PutSettings(w http.ResponseWriter, r *http.Reques
 		sr.FakeIPPool6 = cur.FakeIPPool6
 		sr.InterceptFamily = cur.InterceptFamily
 		sr.FakeIPTunAddr4 = cur.FakeIPTunAddr4
+		sr.BypassDevices = cur.BypassDevices
 	}
 	if body.FakeIPPool6 != nil {
 		sr.FakeIPPool6 = *body.FakeIPPool6
@@ -205,6 +207,9 @@ func (h *SingboxRouterHandler) PutSettings(w http.ResponseWriter, r *http.Reques
 	}
 	if body.FakeIPTunAddr4 != nil {
 		sr.FakeIPTunAddr4 = *body.FakeIPTunAddr4
+	}
+	if body.BypassDevices != nil {
+		sr.BypassDevices = *body.BypassDevices
 	}
 	if err := h.svc.UpdateSettings(r.Context(), sr); err != nil {
 		h.handleErr(w, "request", err)

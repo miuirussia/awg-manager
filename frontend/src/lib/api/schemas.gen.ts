@@ -1934,6 +1934,7 @@ const api_SingboxRouterRulesListResponse: v.GenericSchema = v.looseObject({
 });
 
 const api_SingboxRouterSettingsData: v.GenericSchema = v.looseObject({
+	bypassDevices: v.optional(v.nullable(v.array(v.string()))),
 	bypassExtraPorts: v.optional(v.nullable(v.string())),
 	bypassExtraSubnets: v.optional(v.nullable(v.string())),
 	bypassGeoipTags: v.optional(v.nullable(v.array(v.string()))),

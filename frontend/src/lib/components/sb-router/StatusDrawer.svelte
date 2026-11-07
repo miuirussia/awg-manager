@@ -451,7 +451,7 @@
           deviceCount={s?.deviceCount ?? 0}
           policyExists={s?.policyExists !== false}
           variant="expert"
-          onPatch={(patch) => void applyPatch(patch)}
+          onPatch={(patch) => applyPatch(patch)}
         />
 
         <!-- Семейства адресов — тоже только TPROXY: в tun-режимах их задаёт

@@ -106,6 +106,10 @@ type SingboxRouterSettingsData struct {
 	// effect when IPv6 is intercepted (interceptFamily). E.g.
 	// "203.0.113.0/24, 10.8.0.5, 2001:db8::/32".
 	BypassExtraSubnets string `json:"bypassExtraSubnets,omitempty" example:"203.0.113.0/24"`
+	// LAN MAC addresses excluded from TProxy TCP/UDP/DNS interception,
+	// including IPv6. Ignored by TUN modes. Omitted = keep stored exclusions;
+	// an empty array clears the list.
+	BypassDevices []string `json:"bypassDevices,omitempty" example:"aa:bb:cc:dd:ee:ff"`
 	// BypassGeoipTags lists geoip tags from the configured .dat files whose
 	// CIDRs bypass sing-box entirely via the AWGM-BYPASS ipset (same full
 	// bypass semantics as bypassExtraSubnets, ipset-backed because of scale).

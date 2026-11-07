@@ -37,6 +37,8 @@ export interface SingboxRouterSettings {
 	bypassPresets?: string[];
 	bypassExtraPorts?: string;
 	bypassExtraSubnets?: string;
+	/** LAN MAC addresses that bypass TProxy interception, including DNS and IPv6. */
+	bypassDevices?: string[];
 	/**
 	 * Geoip-теги из настроенных .dat-файлов, чьи CIDR целиком обходят sing-box
 	 * через ipset AWGM-BYPASS (та же семантика, что bypassExtraSubnets).

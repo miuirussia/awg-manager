@@ -17,8 +17,8 @@ import (
 
 // buildTproxySpec — режим tproxy: полный перехват в mangle+nat.
 //
-// policyMode=false («перехватывать всё») обнуляет то, что имеет смысл только
-// внутри политики: DNS-RESCUE по LAN-мостам и ingress-MARK по интерфейсам.
+// policyMode=false («перехватывать всё») отключает ingress-MARK. Мосты для
+// DNS-RESCUE нужны и в этом режиме, если есть исключённые устройства.
 func (s *ServiceImpl) buildTproxySpec(
 	ctx context.Context,
 	sr storage.SingboxRouterSettings,
@@ -29,7 +29,7 @@ func (s *ServiceImpl) buildTproxySpec(
 ) RestoreInputSpec {
 	var lanBridges []LANBridgeDNSRedir
 	var ingress []string
-	if policyMode {
+	if policyMode || len(sr.BypassDevices) > 0 {
 		// Discover LAN bridges that NDMS knows how to REDIRECT DNS for
 		// (i.e. has _NDM_HOTSPOT_DNSREDIR rules on). DNS-NOPOLICY rules
 		// re-mark mark=0 DNS up to one of those marks so the existing
@@ -39,6 +39,8 @@ func (s *ServiceImpl) buildTproxySpec(
 		// (permit-less) table and DNS would never resolve. Empty result =
 		// no qualifying bridges = skip the DNS-NOPOLICY logic entirely.
 		lanBridges, _ = discoverLANBridges(ctx, mark)
+	}
+	if policyMode {
 		ingress = s.resolveIngressInterfaces(ctx, sr.IngressInterfaces)
 	}
 	bypassUDP, bypassTCP, _ := resolveBypassPorts(sr.BypassPresets, sr.BypassExtraPorts)
@@ -54,6 +56,7 @@ func (s *ServiceImpl) buildTproxySpec(
 		BypassUDPPorts:    bypassUDP,
 		BypassTCPPorts:    bypassTCP,
 		BypassCIDRs:       bypassSubnets,
+		BypassDevices:     sr.BypassDevices,
 		BypassGeoIPSet:    len(sr.BypassGeoIPTags) > 0,
 		IngressInterfaces: ingress,
 		QoSClasses:        qosSpecs,

@@ -5627,6 +5627,16 @@ definitions:
     type: object
   api.SingboxRouterSettingsData:
     properties:
+      bypassDevices:
+        description: |-
+          LAN MAC addresses excluded from TProxy TCP/UDP/DNS interception,
+          including IPv6. Ignored by TUN modes. Omitted = keep stored exclusions;
+          an empty array clears the list.
+        example:
+        - aa:bb:cc:dd:ee:ff
+        items:
+          type: string
+        type: array
       bypassExtraPorts:
         description: |-
           BypassExtraPorts is a user-defined comma-separated list of extra

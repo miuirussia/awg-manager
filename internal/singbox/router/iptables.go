@@ -468,6 +468,8 @@ type RestoreInputSpec struct {
 	// resolveBypassSubnets. Эмитятся отдельно от bypassCIDRs/WANIPs, у которых
 	// другая семантика (RETURN после перехвата DNS).
 	BypassCIDRs []string
+	// BypassDevices contains normalized LAN MAC addresses, TProxy only.
+	BypassDevices []string
 
 	// IngressInterfaces — уже резолвленные kernel-имена (напр. "nwg3"),
 	// чей ingress-трафик помечается policy-меткой в mangle PREROUTING до
@@ -598,6 +600,12 @@ func emitUserBypassReturns(b *strings.Builder, chain string, cidrs []string) {
 	}
 }
 
+func emitDeviceBypassReturns(b *strings.Builder, chain string, macs []string) {
+	for _, mac := range macs {
+		fmt.Fprintf(b, "-A %s -m mac --mac-source %s -j RETURN\n", chain, mac)
+	}
+}
+
 // emitBypassSetReturn эмитит ранний `-j RETURN` для адресов из geoip-набора
 // AWGM-BYPASS. Ставится сразу за пользовательскими bypass-CIDR (emitUserBypassReturns)
 // — то есть в начале цепочки, ДО перехвата :53: обход полный, включая DNS.
@@ -655,6 +663,7 @@ func buildBlackholeRestoreInput(spec RestoreInputSpec) string {
 	var b strings.Builder
 	b.WriteString("*mangle\n")
 	fmt.Fprintf(&b, ":%s - [0:0]\n", BlackholeChain)
+	emitDeviceBypassReturns(&b, BlackholeChain, spec.BypassDevices)
 	// User bypass first — an explicitly excluded subnet must never be dropped.
 	emitUserBypassReturns(&b, BlackholeChain, spec.BypassCIDRs)
 	// geoip-bypass: эти адреса и при живом движке идут мимо sing-box — мёртвый
@@ -741,6 +750,7 @@ func buildMangleRestoreInput(spec RestoreInputSpec) string {
 	}
 
 	// Пользовательский bypass — целиком мимо sing-box, ДО перехвата DNS.
+	emitDeviceBypassReturns(&b, ChainName, spec.BypassDevices)
 	emitUserBypassReturns(&b, ChainName, spec.BypassCIDRs)
 	emitBypassSetReturn(&b, ChainName, spec)
 
@@ -844,6 +854,7 @@ func buildNatRestoreInput(spec RestoreInputSpec) string {
 		return b.String()
 	}
 
+	emitDeviceBypassReturns(&b, RedirectChain, spec.BypassDevices)
 	emitUserBypassReturns(&b, RedirectChain, spec.BypassCIDRs)
 	emitBypassSetReturn(&b, RedirectChain, spec)
 
@@ -935,10 +946,19 @@ func buildNatRestoreInput(spec RestoreInputSpec) string {
 // buildNatRestoreInput). Вынесено, потому что нужно обеим ветвям — обычной и
 // V4Off.
 func emitDNSRescue(b *strings.Builder, spec RestoreInputSpec) {
-	if spec.MatchAll {
-		return
-	}
 	for _, bm := range spec.LANBridges {
+		if spec.MatchAll {
+			// Excluded default-policy devices no longer hit our DNS capture.
+			// NDMS's catch-all redirect to :53 would reach sing-box's listener;
+			// send only these hosts to ndnproxy before the NDMS chains instead.
+			for _, mac := range spec.BypassDevices {
+				for _, proto := range []string{"udp", "tcp"} {
+					fmt.Fprintf(b, "-I PREROUTING 1 -i %s -m mac --mac-source %s -m mark --mark 0x0 -m pkttype --pkt-type unicast -p %s --dport 53 -m comment --comment %q -j REDIRECT --to-ports %d\n",
+						bm.Bridge, mac, proto, DNSRescueTag, bm.Port)
+				}
+			}
+			continue
+		}
 		fmt.Fprintf(b, "-I PREROUTING 1 -i %s -m mark --mark 0x0 -m pkttype --pkt-type unicast -p udp --dport 53 -m comment --comment %q -j REDIRECT --to-ports %d\n",
 			bm.Bridge, DNSRescueTag, bm.Port)
 		fmt.Fprintf(b, "-I PREROUTING 1 -i %s -m mark --mark 0x0 -m pkttype --pkt-type unicast -p tcp --dport 53 -m comment --comment %q -j REDIRECT --to-ports %d\n",
@@ -1283,7 +1303,7 @@ case "$table" in mangle|nat) ;; *) exit 0 ;; esac
 # Best-effort kernel module preload (both paths need these). Absent .ko or
 # built-in modules are silently skipped — iptables-restore surfaces the verdict.
 KREL="$(uname -r)"
-for mod in xt_TPROXY xt_comment xt_mark xt_connmark xt_conntrack xt_pkttype xt_dscp xt_set; do
+for mod in xt_TPROXY xt_comment xt_mark xt_connmark xt_conntrack xt_pkttype xt_dscp xt_set xt_mac; do
   grep -q "^${mod} " /proc/modules 2>/dev/null && continue
   [ -f "/lib/modules/${KREL}/${mod}.ko" ] && insmod "/lib/modules/${KREL}/${mod}.ko" 2>/dev/null || true
 done
@@ -1617,6 +1637,7 @@ func EnsureRouterNetfilterModules(ctx context.Context) []error {
 		"xt_conntrack",
 		"xt_pkttype",
 		"xt_dscp",
+		"xt_mac",
 	} {
 		err := ensureKernelModuleFn(ctx, name)
 		if err == nil || errors.Is(err, ErrNetfilterComponentMissing) {

@@ -1129,6 +1129,27 @@ func TestRouterPutSettings_OmittedPool6KeepsStored(t *testing.T) {
 	}
 }
 
+func TestRouterPutSettings_BypassDevices(t *testing.T) {
+	for _, tc := range []struct {
+		name, body string
+		want       int
+	}{
+		{"omitted preserves", `{}`, 1},
+		{"empty clears", `{"bypassDevices":[]}`, 0},
+		{"explicit replaces", `{"bypassDevices":["02:11:22:33:44:55","02:11:22:33:44:66"]}`, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &mockRouterSvc{settings: storage.SingboxRouterSettings{BypassDevices: []string{"aa:bb:cc:dd:ee:ff"}}}
+			h := newMockRouterHandler(svc)
+			rr := httptest.NewRecorder()
+			h.PutSettings(rr, httptest.NewRequest(http.MethodPut, "/api/singbox/router/settings", strings.NewReader(tc.body)))
+			if rr.Code != http.StatusOK || len(svc.settings.BypassDevices) != tc.want {
+				t.Fatalf("status=%d devices=%v body=%s", rr.Code, svc.settings.BypassDevices, rr.Body.String())
+			}
+		})
+	}
+}
+
 // fakeipTunAddr4: PUT клиента, не знающего поля, не возвращает адрес tun к
 // дефолту (конфликт с WAN) и не роняет правку при поднятом tun.
 func TestRouterPutSettings_OmittedTunAddr4KeepsStored(t *testing.T) {
