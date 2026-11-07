@@ -266,6 +266,9 @@ type SingboxRouterSettings struct {
 	// (InterceptFamily).
 	// Парсится в момент генерации правил. Пусто = нет исключений.
 	BypassExtraSubnets string `json:"bypassExtraSubnets,omitempty"`
+	// BypassDevices lists LAN MAC addresses excluded from TProxy interception
+	// (TCP, UDP and DNS, for both address families). Ignored by TUN modes.
+	BypassDevices []string `json:"bypassDevices,omitempty"`
 	// BypassGeoIPTags — geoip-теги из настроенных .dat, чьи CIDR уходят в WAN
 	// мимо sing-box через ipset AWGM-BYPASS (та же семантика полного обхода,
 	// что у BypassExtraSubnets, но масштаб geoip требует ipset вместо

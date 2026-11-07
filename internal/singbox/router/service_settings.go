@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/netip"
 	"reflect"
 	"slices"
@@ -375,6 +376,18 @@ func NormalizeSingboxRouterSettings(sr storage.SingboxRouterSettings) (storage.S
 	if _, err := resolveBypassSubnets(sr.BypassExtraSubnets); err != nil {
 		return sr, fmt.Errorf("bypassExtraSubnets: %w", err)
 	}
+	// Normalize into a new slice: callers may share the stored snapshot.
+	var devices []string
+	for _, value := range sr.BypassDevices {
+		mac, err := net.ParseMAC(strings.TrimSpace(value))
+		if err != nil || len(mac) != 6 || mac[0]&1 != 0 || mac.String() == "00:00:00:00:00:00" {
+			return sr, fmt.Errorf("bypassDevices: invalid device MAC address %q", value)
+		}
+		if !slices.Contains(devices, mac.String()) {
+			devices = append(devices, mac.String())
+		}
+	}
+	sr.BypassDevices = devices
 	if err := validateIngressRefs(sr.IngressInterfaces); err != nil {
 		return sr, err
 	}
