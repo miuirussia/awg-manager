@@ -947,9 +947,8 @@ func TestReconcileInstalled_BlackholeIgnoresInterceptOnlyInput(t *testing.T) {
 	}
 }
 
-// В режиме «весь трафик» гейт policyMode в билдере спека нужен не ради
-// результата (рендерер и так не эмитит DNS-RESCUE и ingress-MARK при
-// MatchAll), а ради ЦЕНЫ: без него каждый тик reconcile дёргал бы дамп
+// В режиме «весь трафик» без исключений устройства DNS-RESCUE не нужен:
+// гейт в билдере спека нужен ради ЦЕНЫ — иначе каждый тик дёргал бы дамп
 // iptables ради LAN-мостов и резолв интерфейсов через NDMS — впустую.
 // Дублирующая защита без теста — это защита, которую снимут при первой уборке.
 func TestBuildTproxySpec_AllDevicesSkipsPolicyOnlyDiscovery(t *testing.T) {
@@ -973,5 +972,12 @@ func TestBuildTproxySpec_AllDevicesSkipsPolicyOnlyDiscovery(t *testing.T) {
 	}
 	if len(all.LANBridges) != 0 {
 		t.Errorf("DNS-RESCUE не применим при MatchAll: мостов=%d, want 0", len(all.LANBridges))
+	}
+
+	withDevice := reconcileInstalledSettings
+	withDevice.BypassDevices = []string{"aa:bb:cc:dd:ee:ff"}
+	all = svc.buildTproxySpec(context.Background(), withDevice, "", false, nil, nil)
+	if discovered != 1 || len(all.LANBridges) != 1 {
+		t.Fatalf("excluded devices need ndnproxy discovery in all-devices mode: calls=%d bridges=%v", discovered, all.LANBridges)
 	}
 }
