@@ -7,6 +7,7 @@
   import { Button } from '$lib/components/ui';
   import OutboundOption from './OutboundOption.svelte';
   import PolicyCombobox from './PolicyCombobox.svelte';
+  import BypassDevices from './BypassDevices.svelte';
   import type { SingboxRouterSettings } from '$lib/types';
 
   interface Props {
@@ -14,7 +15,7 @@
     deviceCount?: number;
     policyExists?: boolean;
     variant?: 'beginner' | 'expert';
-    onPatch: (patch: Partial<SingboxRouterSettings>) => void;
+    onPatch: (patch: Partial<SingboxRouterSettings>) => void | Promise<void>;
   }
 
   let {
@@ -95,6 +96,10 @@
   <section class="sec">
     <p class="hint">{allHint}</p>
   </section>
+{/if}
+
+{#if !cfg.routingMode || cfg.routingMode === 'tproxy'}
+  <BypassDevices {cfg} {onPatch} />
 {/if}
 
 <style>
