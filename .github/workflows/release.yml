@@ -12,6 +12,10 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
+  AWG_CHANGELOG_URL: https://github.com/miuirussia/awg-manager/releases/download/latest/CHANGELOG.md
+
 jobs:
   version:
     name: Resolve version
