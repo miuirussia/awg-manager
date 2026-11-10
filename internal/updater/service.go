@@ -11,6 +11,7 @@ import (
 	"github.com/hoaxisr/awg-manager/internal/events"
 	"github.com/hoaxisr/awg-manager/internal/logging"
 	"github.com/hoaxisr/awg-manager/internal/storage"
+	"github.com/hoaxisr/awg-manager/internal/sys/semver"
 )
 
 const checkInterval = 24 * time.Hour
@@ -238,7 +239,7 @@ func (s *Service) DownloadPackage(ctx context.Context, channel, packageName stri
 	base := channelBaseURL(channel)
 	archDir := archSuffixToRepoDir(archSuffix())
 	pkgsURL := fmt.Sprintf("%s/%s/Packages.gz", base, archDir)
-	pkg, err := fetchLatestPackageWithDownloader(ctx, s.downloader, pkgsURL, packageName, versionComparator(channel), s.statsHeaders())
+	pkg, err := fetchLatestPackageWithDownloader(ctx, s.downloader, pkgsURL, packageName, semver.CompareWithRevision, s.statsHeaders())
 	if err != nil {
 		return "", fmt.Errorf("entware repo: %w", err)
 	}

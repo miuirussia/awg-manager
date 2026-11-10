@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,20 +12,20 @@ import (
 )
 
 type fakePackageManager struct {
-	updateErr      error
-	installErr     error
-	calls          []string
-	installTargets []string
-	onInstall      func()
+	updateErr  error
+	installErr error
+	calls      []string
+	installed  []string
+	onInstall  func()
 }
 
 func (f *fakePackageManager) Update() (string, error) {
 	f.calls = append(f.calls, "update")
 	return "update output", f.updateErr
 }
-func (f *fakePackageManager) Install(targets []string) (string, error) {
+func (f *fakePackageManager) InstallFile(path string) (string, error) {
 	f.calls = append(f.calls, "install")
-	f.installTargets = append([]string(nil), targets...)
+	f.installed = append(f.installed, path)
 	if f.onInstall != nil {
 		f.onInstall()
 	}
@@ -39,19 +40,6 @@ type fakeKeys struct {
 func (f fakeKeys) GetApiKey() string   { return f.key }
 func (f fakeKeys) IsAuthEnabled() bool { return f.auth }
 
-type fakePackageDownloader struct {
-	path    string
-	err     error
-	channel string
-	name    string
-}
-
-func (f *fakePackageDownloader) DownloadPackage(_ context.Context, channel, packageName string) (string, error) {
-	f.channel = channel
-	f.name = packageName
-	return f.path, f.err
-}
-
 // countingKeys: auth on, no key; counts the installer's precondition checks.
 type countingKeys struct{ checks int }
 
@@ -63,6 +51,9 @@ func testInstaller(t *testing.T) (*Installer, *fakePackageManager, string) {
 	dir := t.TempDir()
 	pkg := &fakePackageManager{}
 	installer := NewInstaller(pkg, fakeKeys{key: "secret", auth: true})
+	installer.downloadPackage = func(_ context.Context, path string) error {
+		return os.WriteFile(path, []byte("satellite package"), 0o600)
+	}
 	installer.keyPath = filepath.Join(dir, "key")
 	installer.enabledPath = filepath.Join(dir, "enabled")
 	installer.initPath = filepath.Join(dir, "S99awgmautolist")
@@ -110,45 +101,6 @@ func TestInstallWritesKeyAndConfirms(t *testing.T) {
 	info, _ := os.Stat(installer.keyPath)
 	if info.Mode().Perm() != 0o600 {
 		t.Fatalf("key mode=%o", info.Mode().Perm())
-	}
-}
-
-func TestInstallDevelopUsesDownloadedIPK(t *testing.T) {
-	installer, pkg, dir := testInstaller(t)
-	ipkPath := filepath.Join(dir, "awgmautolist_2.21.1+r5_aarch64-3.10-kn.ipk")
-	if err := os.WriteFile(ipkPath, []byte("ipk"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	downloads := &fakePackageDownloader{path: ipkPath}
-	installer.channel = func() string { return "develop" }
-	installer.developPackages = downloads
-	if err := installer.Install(context.Background()); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Join(pkg.calls, ",") != "update,install" {
-		t.Fatalf("calls=%v, want update and local install", pkg.calls)
-	}
-	if len(pkg.installTargets) != 1 || pkg.installTargets[0] != ipkPath {
-		t.Fatalf("install targets=%v", pkg.installTargets)
-	}
-	if downloads.channel != "develop" || downloads.name != PackageName {
-		t.Fatalf("download=%q %q", downloads.channel, downloads.name)
-	}
-	if _, err := os.Stat(ipkPath); !os.IsNotExist(err) {
-		t.Fatalf("downloaded IPK was not removed: %v", err)
-	}
-}
-
-func TestInstallDevelopDownloadFailureDoesNotInstall(t *testing.T) {
-	installer, pkg, _ := testInstaller(t)
-	downloadErr := errors.New("download failed")
-	installer.channel = func() string { return "develop" }
-	installer.developPackages = &fakePackageDownloader{err: downloadErr}
-	if err := installer.Install(context.Background()); !errors.Is(err, downloadErr) {
-		t.Fatalf("err=%v", err)
-	}
-	if strings.Join(pkg.calls, ",") != "update" {
-		t.Fatalf("opkg calls=%v", pkg.calls)
 	}
 }
 
@@ -476,4 +428,69 @@ func TestRestartAfterPanelPortChange(t *testing.T) {
 			t.Fatalf("err = %v, want raw init output", err)
 		}
 	})
+}
+
+func TestInstallWritesShellSafeKeyBeforeInstall(t *testing.T) {
+	installer, pkg, _ := testInstaller(t)
+	key := `k'ey $(id) "x"`
+	installer.keys = fakeKeys{key: key, auth: true}
+	pkg.onInstall = func() {
+		out, err := exec.Command("sh", "-c", `. "$0"; printf %s "$AWGM_API_KEY"`, installer.keyPath).Output()
+		if err != nil || string(out) != key {
+			t.Fatalf("sourced key = %q, %v", out, err)
+		}
+		payload, err := os.ReadFile(pkg.installed[0])
+		if err != nil || string(payload) != "satellite package" {
+			t.Fatalf("package at install = %q, %v", payload, err)
+		}
+		if err := os.WriteFile(installer.initPath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := installer.Install(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(pkg.installed) != 1 || filepath.Base(pkg.installed[0]) != "awgmautolist.ipk" {
+		t.Fatalf("installed = %v", pkg.installed)
+	}
+	if _, err := os.Stat(filepath.Dir(pkg.installed[0])); !os.IsNotExist(err) {
+		t.Fatalf("temporary package directory survived install: %v", err)
+	}
+}
+
+func TestInstallDownloadFailureDoesNotInstallOrChangeState(t *testing.T) {
+	installer, pkg, _ := testInstaller(t)
+	if err := os.WriteFile(installer.enabledPath, []byte("ENABLED=no\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	wantErr := errors.New("release unavailable")
+	var packagePath string
+	installer.downloadPackage = func(_ context.Context, path string) error {
+		packagePath = path
+		return wantErr
+	}
+	if err := installer.Install(context.Background()); !errors.Is(err, wantErr) {
+		t.Fatalf("err = %v", err)
+	}
+	if len(pkg.calls) != 0 {
+		t.Fatalf("opkg called after download failure: %v", pkg.calls)
+	}
+	if got, err := os.ReadFile(installer.enabledPath); err != nil || string(got) != "ENABLED=no\n" {
+		t.Fatalf("state = %q, %v", got, err)
+	}
+	if _, err := os.Stat(installer.keyPath); !os.IsNotExist(err) {
+		t.Fatalf("key was changed after download failure: %v", err)
+	}
+	if _, err := os.Stat(filepath.Dir(packagePath)); !os.IsNotExist(err) {
+		t.Fatalf("temporary directory survived download failure: %v", err)
+	}
+}
+
+func TestInstallFailsWhenPackageDidNotLand(t *testing.T) {
+	installer, pkg, _ := testInstaller(t)
+	pkg.onInstall = nil
+	pkg.updateErr = errors.New("feed down")
+	if err := installer.Install(context.Background()); err == nil || !strings.Contains(err.Error(), "feed down") {
+		t.Fatalf("err = %v", err)
+	}
 }

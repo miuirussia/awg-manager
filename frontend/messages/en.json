@@ -7582,7 +7582,7 @@
 	"autolist_enable_ok": "The Autolist is on",
 	"autolist_control_err": "Failed to change the Autolist state",
 	"autolist_not_installed": "The Autolist is not installed",
-	"autolist_not_installed_hint": "The Autolist is installed as a separate package from the awg-manager repository. Its log: /tmp/awgmautolist.log.",
+	"autolist_not_installed_hint": "The awgmautolist package is downloaded from the awg-manager release and installed via opkg. Log: /tmp/awgmautolist.log.",
 	"autolist_install": "Install",
 	"autolist_install_ok": "The Autolist is installed",
 	"autolist_install_err": "Failed to install the Autolist",
