@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -303,6 +304,27 @@ func (c *Client) Install(names []string) (string, error) {
 	}
 	args := append([]string{"install"}, names...)
 	out, err := c.runLocked(args...)
+	if err == nil {
+		c.mu.Lock()
+		c.listCache = nil
+		c.mu.Unlock()
+	}
+	return out, err
+}
+
+// InstallFile installs a downloaded local IPK without resolving its name in feeds.
+func (c *Client) InstallFile(path string) (string, error) {
+	if !filepath.IsAbs(path) || filepath.Ext(path) != ".ipk" {
+		return "", fmt.Errorf("invalid package path: %q", path)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("stat package: %w", err)
+	}
+	if !info.Mode().IsRegular() || info.Size() == 0 {
+		return "", fmt.Errorf("package is not a non-empty regular file: %q", path)
+	}
+	out, err := c.runLocked("install", path)
 	if err == nil {
 		c.mu.Lock()
 		c.listCache = nil

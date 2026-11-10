@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ type fakePackageManager struct {
 	updateErr  error
 	installErr error
 	calls      []string
+	installed  []string
 	onInstall  func()
 }
 
@@ -21,8 +23,9 @@ func (f *fakePackageManager) Update() (string, error) {
 	f.calls = append(f.calls, "update")
 	return "update output", f.updateErr
 }
-func (f *fakePackageManager) Install([]string) (string, error) {
+func (f *fakePackageManager) InstallFile(path string) (string, error) {
 	f.calls = append(f.calls, "install")
+	f.installed = append(f.installed, path)
 	if f.onInstall != nil {
 		f.onInstall()
 	}
@@ -48,6 +51,9 @@ func testInstaller(t *testing.T) (*Installer, *fakePackageManager, string) {
 	dir := t.TempDir()
 	pkg := &fakePackageManager{}
 	installer := NewInstaller(pkg, fakeKeys{key: "secret", auth: true})
+	installer.downloadPackage = func(_ context.Context, path string) error {
+		return os.WriteFile(path, []byte("satellite package"), 0o600)
+	}
 	installer.keyPath = filepath.Join(dir, "awgmautolist.key")
 	installer.enabledPath = filepath.Join(dir, "awgmautolist.enabled")
 	installer.initPath = filepath.Join(dir, "S99awgmautolist")
@@ -269,5 +275,70 @@ func TestApiKeyChangedRestartsOnlyInstalled(t *testing.T) {
 	}
 	if err := installer.ApiKeyChanged(); err != nil || !called {
 		t.Fatalf("installed: called=%t err=%v", called, err)
+	}
+}
+
+func TestInstallWritesShellSafeKeyBeforeInstall(t *testing.T) {
+	installer, pkg, _ := testInstaller(t)
+	key := `k'ey $(id) "x"`
+	installer.keys = fakeKeys{key: key, auth: true}
+	pkg.onInstall = func() {
+		out, err := exec.Command("sh", "-c", `. "$0"; printf %s "$AWGM_API_KEY"`, installer.keyPath).Output()
+		if err != nil || string(out) != key {
+			t.Fatalf("sourced key = %q, %v", out, err)
+		}
+		payload, err := os.ReadFile(pkg.installed[0])
+		if err != nil || string(payload) != "satellite package" {
+			t.Fatalf("package at install = %q, %v", payload, err)
+		}
+		if err := os.WriteFile(installer.initPath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := installer.Install(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(pkg.installed) != 1 || filepath.Base(pkg.installed[0]) != "awgmautolist.ipk" {
+		t.Fatalf("installed = %v", pkg.installed)
+	}
+	if _, err := os.Stat(filepath.Dir(pkg.installed[0])); !os.IsNotExist(err) {
+		t.Fatalf("temporary package directory survived install: %v", err)
+	}
+}
+
+func TestInstallDownloadFailureDoesNotInstallOrChangeState(t *testing.T) {
+	installer, pkg, _ := testInstaller(t)
+	if err := os.WriteFile(installer.enabledPath, []byte("ENABLED=no\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	wantErr := errors.New("release unavailable")
+	var packagePath string
+	installer.downloadPackage = func(_ context.Context, path string) error {
+		packagePath = path
+		return wantErr
+	}
+	if err := installer.Install(context.Background()); !errors.Is(err, wantErr) {
+		t.Fatalf("err = %v", err)
+	}
+	if len(pkg.calls) != 0 {
+		t.Fatalf("opkg called after download failure: %v", pkg.calls)
+	}
+	if got, err := os.ReadFile(installer.enabledPath); err != nil || string(got) != "ENABLED=no\n" {
+		t.Fatalf("state = %q, %v", got, err)
+	}
+	if _, err := os.Stat(installer.keyPath); !os.IsNotExist(err) {
+		t.Fatalf("key was changed after download failure: %v", err)
+	}
+	if _, err := os.Stat(filepath.Dir(packagePath)); !os.IsNotExist(err) {
+		t.Fatalf("temporary directory survived download failure: %v", err)
+	}
+}
+
+func TestInstallFailsWhenPackageDidNotLand(t *testing.T) {
+	installer, pkg, _ := testInstaller(t)
+	pkg.onInstall = nil
+	pkg.updateErr = errors.New("feed down")
+	if err := installer.Install(context.Background()); err == nil || !strings.Contains(err.Error(), "feed down") {
+		t.Fatalf("err = %v", err)
 	}
 }

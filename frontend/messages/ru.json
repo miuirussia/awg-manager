@@ -7921,7 +7921,7 @@
 	"autolist_enable_ok": "Сателлит включён",
 	"autolist_control_err": "Не удалось изменить состояние сателлита",
 	"autolist_not_installed": "Сателлит не установлен",
-	"autolist_not_installed_hint": "Пакет awgmautolist ставится из репозитория awg-manager через opkg; журнал сателлита — /tmp/awgmautolist.log.",
+	"autolist_not_installed_hint": "Пакет awgmautolist скачивается из релиза awg-manager и устанавливается через opkg; журнал сателлита — /tmp/awgmautolist.log.",
 	"autolist_install": "Установить",
 	"autolist_install_ok": "Сателлит установлен",
 	"autolist_install_err": "Не удалось установить сателлит",

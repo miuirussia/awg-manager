@@ -1,9 +1,58 @@
 package opkg
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestInstallFilePassesLocalPathAsOneArgument(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "opkg")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\"\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "package with spaces.ipk")
+	if err := os.WriteFile(path, []byte("IPK"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	c := &Client{Bin: bin}
+	out, err := c.InstallFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "install\n"+path {
+		t.Fatalf("arguments = %q", out)
+	}
+}
+
+func TestInstallFileRejectsInvalidPackage(t *testing.T) {
+	dir := t.TempDir()
+	empty := filepath.Join(dir, "empty.ipk")
+	if err := os.WriteFile(empty, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		path string
+	}{
+		{name: "option", path: "--force-reinstall"},
+		{name: "relative", path: "package.ipk"},
+		{name: "URL", path: "https://example.test/package.ipk"},
+		{name: "wrong extension", path: filepath.Join(dir, "package.txt")},
+		{name: "missing", path: filepath.Join(dir, "missing.ipk")},
+		{name: "empty", path: empty},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := NewClient().InstallFile(tc.path); err == nil {
+				t.Fatalf("invalid path accepted: %q", tc.path)
+			} else if strings.Contains(err.Error(), "opkg not installed") {
+				t.Fatalf("invalid path reached opkg: %v", err)
+			}
+		})
+	}
+}
 
 // Поиск уходит в exec тем же путём, что install: аргумент, начинающийся с
 // дефиса, opkg прочитает как флаг.

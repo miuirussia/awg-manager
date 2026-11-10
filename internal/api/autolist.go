@@ -98,8 +98,9 @@ func (h *AutolistHandler) Control(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, autolistStatusResponse{AutolistStatus: &status})
 }
 
-// AutolistInstall installs the satellite through opkg and confirms its status.
+// AutolistInstall downloads the satellite from an AWGM release, installs it through opkg and confirms its status.
 // @Summary Install Autolist satellite
+// @Description Скачивает пакет awgmautolist из релиза awg-manager для архитектуры роутера, устанавливает через opkg, кладёт сателлиту API-ключ и ждёт, пока он ответит. При включённой авторизации требует созданный API-ключ.
 // @Tags autolist
 // @Produce json
 // @Security CookieAuth

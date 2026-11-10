@@ -10073,6 +10073,9 @@ paths:
       - autolist
   /autolist/install:
     post:
+      description: Скачивает пакет awgmautolist из релиза awg-manager для архитектуры
+        роутера, устанавливает через opkg, кладёт сателлиту API-ключ и ждёт, пока
+        он ответит. При включённой авторизации требует созданный API-ключ.
       produces:
       - application/json
       responses:

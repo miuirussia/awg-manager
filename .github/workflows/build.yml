@@ -170,6 +170,7 @@ jobs:
 
           SINGBOX_VERSION="${{ needs.version.outputs.singbox_version }}" \
           SINGBOX_REF="${{ needs.version.outputs.singbox_version }}" \
+          RELEASE_BASE_URL="$AWG_RELEASE_BASE_URL" \
             ./scripts/build-singbox.sh "${{ matrix.arch }}"
 
       - name: Save sing-box build artifacts
@@ -198,7 +199,6 @@ jobs:
           set -euo pipefail
 
           IPK_VERSION="${{ needs.version.outputs.ipk_version }}"
-          # dist/ раньше создавали sing-box-шаги (удалены в #589)
           mkdir -p dist
           printf '%s\n' "$IPK_VERSION" > dist/VERSION
 
@@ -211,14 +211,9 @@ jobs:
           name: result-${{ matrix.arch }}
           path: |
             dist/awg-manager_*_${{ matrix.arch }}-kn.ipk
-<<<<<<< HEAD
             dist/awgmautolist_*_${{ matrix.arch }}-kn.ipk
-            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}
-            dist/sing-box-${{ env.SINGBOX_VERSION }}-${{ matrix.arch }}.sha256
-=======
             dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}
             dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}.sha256
->>>>>>> 871385e2 (build: switch sing-box to amnezia-box)
             dist/VERSION
           if-no-files-found: error
 

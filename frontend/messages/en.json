@@ -7521,7 +7521,7 @@
 	"autolist_enable_ok": "Satellite enabled",
 	"autolist_control_err": "Failed to change satellite state",
 	"autolist_not_installed": "Satellite is not installed",
-	"autolist_not_installed_hint": "The awgmautolist package is installed from the awg-manager repository via opkg; satellite log: /tmp/awgmautolist.log.",
+	"autolist_not_installed_hint": "The awgmautolist package is downloaded from the awg-manager release and installed via opkg; satellite log: /tmp/awgmautolist.log.",
 	"autolist_install": "Install",
 	"autolist_install_ok": "Satellite installed",
 	"autolist_install_err": "Failed to install the satellite",

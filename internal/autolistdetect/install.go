@@ -33,7 +33,7 @@ var installerWaitDelay = initWaitDelay
 
 type packageManager interface {
 	Update() (string, error)
-	Install([]string) (string, error)
+	InstallFile(path string) (string, error)
 }
 
 type keySource interface {
@@ -44,10 +44,11 @@ type keySource interface {
 // Installer owns package installation and API-key rotation, independently of
 // candidate/status JSON. confirm must verify the running satellite after opkg.
 type Installer struct {
-	mu      sync.Mutex
-	pkg     packageManager
-	keys    keySource
-	confirm func(ctx context.Context, running bool) error
+	mu              sync.Mutex
+	pkg             packageManager
+	keys            keySource
+	confirm         func(ctx context.Context, running bool) error
+	downloadPackage func(context.Context, string) error
 
 	keyPath     string
 	enabledPath string
@@ -68,8 +69,14 @@ func (i *Installer) SetConfirm(confirm func(ctx context.Context, running bool) e
 // SetInstaller connects opkg and AWGM's key store to the detection service.
 // panelVersion is the awg-manager version; the satellite package is released
 // with the same version, so an installed package below it is outdated.
-func (s *Service) SetInstaller(pkg packageManager, keys keySource, panelVersion string) {
+func (s *Service) SetInstaller(
+	pkg packageManager,
+	keys keySource,
+	panelVersion string,
+	downloadPackage func(context.Context, string) error,
+) {
 	installer := NewInstaller(pkg, keys)
+	installer.downloadPackage = downloadPackage
 	installer.SetConfirm(s.confirmState)
 	s.installer = installer
 	s.panelVersion = panelVersion
@@ -189,6 +196,19 @@ func (i *Installer) Install(ctx context.Context) error {
 	if i.keys.IsAuthEnabled() && i.keys.GetApiKey() == "" {
 		return ErrNeedApiKey
 	}
+	if i.downloadPackage == nil {
+		return errors.New("satellite package downloader is not configured")
+	}
+	dir, err := os.MkdirTemp("", "awgmautolist-install-")
+	if err != nil {
+		return fmt.Errorf("create package directory: %w", err)
+	}
+	defer os.RemoveAll(dir)
+	ipkPath := filepath.Join(dir, PackageName+".ipk")
+	if err := i.downloadPackage(ctx, ipkPath); err != nil {
+		return fmt.Errorf("download %s: %w", PackageName, err)
+	}
+	// Write the key before installation: postinst starts the satellite.
 	if err := i.writeKey(); err != nil {
 		return err
 	}
@@ -203,8 +223,9 @@ func (i *Installer) Install(ctx context.Context) error {
 			return err
 		}
 	}
+	// A failed feed update is non-fatal when the downloaded IPK can still be installed.
 	updateOutput, updateErr := i.pkg.Update()
-	output, installErr := i.pkg.Install([]string{PackageName})
+	output, installErr := i.pkg.InstallFile(ipkPath)
 	if installErr == nil {
 		if _, err := os.Stat(i.initPath); err != nil {
 			installErr = fmt.Errorf("package installed no init script: %w", err)
