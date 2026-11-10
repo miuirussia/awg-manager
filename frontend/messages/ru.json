@@ -7938,7 +7938,7 @@
 	"autolist_enable_ok": "Автолист включён",
 	"autolist_control_err": "Не удалось изменить состояние автолиста",
 	"autolist_not_installed": "Автолист не установлен",
-	"autolist_not_installed_hint": "Автолист ставится отдельным пакетом из репозитория awg-manager. Его журнал: /tmp/awgmautolist.log.",
+	"autolist_not_installed_hint": "Пакет awgmautolist скачивается из релиза awg-manager и устанавливается через opkg. Журнал: /tmp/awgmautolist.log.",
 	"autolist_install": "Установить",
 	"autolist_install_ok": "Автолист установлен",
 	"autolist_install_err": "Не удалось установить автолист",
