@@ -36,6 +36,7 @@ import (
 	"github.com/hoaxisr/awg-manager/internal/singbox/router/bypassset"
 	"github.com/hoaxisr/awg-manager/internal/singbox/subscription"
 	"github.com/hoaxisr/awg-manager/internal/storage"
+	"github.com/hoaxisr/awg-manager/internal/sys/opkg"
 	"github.com/hoaxisr/awg-manager/internal/sys/osdetect"
 	"github.com/hoaxisr/awg-manager/internal/telemt"
 	"github.com/hoaxisr/awg-manager/internal/tgwebproxy"
@@ -452,6 +453,14 @@ func (a *app) setupDeviceProxy() {
 	a.dnsRefreshScheduler.Start()
 	a.geoRefreshScheduler.Start()
 	a.updaterService.SetDownloader(sharedDownloadSvc)
+	a.autolistService.SetInstaller(
+		opkg.NewClient(),
+		a.settingsStore,
+		version,
+		func(ctx context.Context, destPath string) error {
+			return a.updaterService.DownloadAutolistPackage(ctx, detectArch(), destPath)
+		},
+	)
 	a.updaterService.SetFeatures(a.usageFeatures)
 	a.updaterService.Start()
 	a.deferOnExit(a.updaterService.Stop)
