@@ -12,12 +12,10 @@ import (
 	"github.com/hoaxisr/awg-manager/internal/sys/appver"
 )
 
-// changelogURLForChannel возвращает URL CHANGELOG.md для канала. Stable
-// берётся из release asset, заданного сборкой; develop остаётся рядом с
-// Packages.gz в Entware repo.
+// changelogURLForChannel uses the same channel as package updates.
 func changelogURLForChannel(channel string) string {
 	if channel == channelDevelop {
-		return entwareRepoURL + "/develop/CHANGELOG.md"
+		return releaseAssetURL(channel, "CHANGELOG.md")
 	}
 	return changelogURL
 }
