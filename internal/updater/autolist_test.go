@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hoaxisr/awg-manager/internal/downloader"
+	"github.com/hoaxisr/awg-manager/internal/storage"
 )
 
 func TestDownloadAutolistPackage(t *testing.T) {
@@ -48,6 +49,72 @@ func TestDownloadAutolistPackage(t *testing.T) {
 			}
 			if got, want := strings.Join(paths, ","), "/Packages-"+arch+".gz,/"+filename; got != want {
 				t.Fatalf("requests = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestDownloadAutolistPackageChannels(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		version        string
+		channel        string
+		packageChannel string
+		packageVersion string
+	}{
+		{name: "stable build", version: "2.20.3", packageChannel: channelStable, packageVersion: "2.20.3"},
+		{name: "develop build with default settings", version: "2.20.3+r1", packageChannel: channelDevelop, packageVersion: "2.20.3+r2"},
+		{name: "develop build with stable updates", version: "2.20.3+r1", channel: channelStable, packageChannel: channelDevelop, packageVersion: "2.20.3+r2"},
+		{name: "develop updates", version: "2.20.3", channel: channelDevelop, packageChannel: channelDevelop, packageVersion: "2.20.3+r2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const arch = "mipsel-3.4"
+			filename := "awgmautolist_" + tc.packageVersion + "_" + arch + "-kn.ipk"
+			index := gzipBytes(t, fmt.Sprintf(
+				"Package: awgmautolist\nVersion: %s\nFilename: %s\nSHA256sum: %x\n",
+				tc.packageVersion, filename, sha256.Sum256([]byte("satellite IPK")),
+			))
+			prefix := "/" + tc.packageChannel
+			var paths []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				paths = append(paths, r.URL.Path)
+				switch r.URL.Path {
+				case prefix + "/Packages-" + arch + ".gz":
+					w.Write(index)
+				case prefix + "/" + filename:
+					w.Write([]byte("satellite IPK"))
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer srv.Close()
+			withMockRepo(t, srv)
+			releaseBaseURL += "/stable"
+			developReleaseBaseURL += "/develop"
+
+			store := storage.NewSettingsStore(t.TempDir())
+			if tc.channel != "" {
+				if err := store.Update(func(cur *storage.Settings) error {
+					cur.Updates.Channel = tc.channel
+					return nil
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			s := &Service{version: tc.version, settings: store, downloader: newDefaultDownloader()}
+			updateChannel := s.channel()
+			dest := filepath.Join(t.TempDir(), "satellite.ipk")
+			if err := s.DownloadAutolistPackage(context.Background(), arch, dest); err != nil {
+				t.Fatal(err)
+			}
+			if got, err := os.ReadFile(dest); err != nil || string(got) != "satellite IPK" {
+				t.Fatalf("download = %q, %v", got, err)
+			}
+			if got, want := strings.Join(paths, ","), prefix+"/Packages-"+arch+".gz,"+prefix+"/"+filename; got != want {
+				t.Fatalf("requests = %q, want %q", got, want)
+			}
+			if got := s.channel(); got != updateChannel {
+				t.Fatalf("update channel changed from %q to %q", updateChannel, got)
 			}
 		})
 	}
