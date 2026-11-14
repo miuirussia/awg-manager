@@ -13,8 +13,9 @@ permissions:
   contents: write
 
 env:
-  AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
-  AWG_CHANGELOG_URL: https://github.com/miuirussia/awg-manager/releases/download/latest/CHANGELOG.md
+  AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/latest/download
+  AWG_DEVELOP_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
+  AWG_CHANGELOG_URL: https://github.com/miuirussia/awg-manager/releases/latest/download/CHANGELOG.md
 
 jobs:
   frontend:
@@ -44,18 +45,17 @@ jobs:
           if-no-files-found: error
 
   version:
-    name: Resolve build versions
+    name: Resolve IPK version
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       ipk_version: ${{ steps.resolve.outputs.ipk_version }}
-      singbox_version: ${{ steps.resolve.outputs.singbox_version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - name: Resolve versions
+      - name: Resolve revision for current patch
         id: resolve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,19 +63,6 @@ jobs:
           set -euo pipefail
 
           VERSION="$(tr -d '[:space:]' < VERSION)"
-          # /releases/latest excludes prereleases. Choose the most recently
-          # published non-draft release, so a newer prerelease is not missed.
-          SINGBOX_VERSION="$(gh api --paginate --slurp 'repos/hoaxisr/amnezia-box/releases?per_page=100' | jq -r '
-            add
-            | [ .[] | select(.draft | not) | select(.published_at != null) ]
-            | max_by(.published_at)
-            | .tag_name // empty
-          ')"
-          if [[ -z "$SINGBOX_VERSION" ]]; then
-            echo "Unable to resolve the latest amnezia-box release" >&2
-            exit 1
-          fi
-
           REV=1
           PREV=""
 
@@ -90,10 +77,8 @@ jobs:
           fi
 
           IPK_VERSION="${VERSION}+r${REV}"
-          echo "Resolved IPK ${IPK_VERSION} (previous: ${PREV:-none})"
-          echo "Resolved amnezia-box release ${SINGBOX_VERSION}"
+          echo "Resolved ${IPK_VERSION} (previous: ${PREV:-none})"
           echo "ipk_version=${IPK_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "singbox_version=${SINGBOX_VERSION}" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build (${{ matrix.arch }})
@@ -134,64 +119,10 @@ jobs:
             git ca-certificates gnupg curl file xz-utils unzip zip python3 python3-requests procps \
             build-essential pkg-config
 
-      - name: Resolve sing-box ref
-        id: singbox-ref
-        run: |
-          set -euo pipefail
-
-          version="${{ needs.version.outputs.singbox_version }}"
-          sha="$(git ls-remote https://github.com/hoaxisr/amnezia-box.git "refs/tags/${version}" | awk 'NR == 1 { print $1 }')"
-          if [[ -z "$sha" ]]; then
-            echo "Unable to resolve amnezia-box release $version" >&2
-            exit 1
-          fi
-
-          echo "Resolved amnezia-box release $version to $sha"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-
-      - name: Restore sing-box build artifacts
-        id: singbox-cache
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
-        with:
-          # Cache holds ONLY the built binary + its sha256 sidecar. embedded.go
-          # is NOT cached and NOT hashed into the key: it is a build output
-          # (per-arch URL/SHA256/Size) regenerated unconditionally from the
-          # binary by the "Refresh sing-box embedded metadata" step below, so it
-          # is always fresh whether the binary was rebuilt or restored.
-          key: sing-box-${{ matrix.arch }}-${{ needs.version.outputs.singbox_version }}-${{ steps.singbox-ref.outputs.sha }}-repo-${{ hashFiles('scripts/build-singbox.sh') }}
-          path: |
-            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}
-            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}.sha256
-
-      - name: Build sing-box
-        if: steps.singbox-cache.outputs.cache-hit != 'true'
-        run: |
-          set -euo pipefail
-
-          SINGBOX_VERSION="${{ needs.version.outputs.singbox_version }}" \
-          SINGBOX_REF="${{ needs.version.outputs.singbox_version }}" \
-          RELEASE_BASE_URL="$AWG_RELEASE_BASE_URL" \
-            ./scripts/build-singbox.sh "${{ matrix.arch }}"
-
-      - name: Save sing-box build artifacts
-        if: steps.singbox-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
-        with:
-          # Key + path MUST match the restore step above (see its comment).
-          key: sing-box-${{ matrix.arch }}-${{ needs.version.outputs.singbox_version }}-${{ steps.singbox-ref.outputs.sha }}-repo-${{ hashFiles('scripts/build-singbox.sh') }}
-          path: |
-            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}
-            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}.sha256
-
-      - name: Refresh sing-box embedded metadata
-        # Unconditional: on a cache hit "Build sing-box" is skipped, but
-        # embedded.go must still carry the correct URL/SHA256/Size for the
-        # restored binary so the router updater downloads the right file.
-        run: |
-          set -euo pipefail
-
-          RELEASE_BASE_URL="$AWG_RELEASE_BASE_URL" \
-            ./scripts/update-singbox-embedded.sh "${{ matrix.arch }}" "${{ needs.version.outputs.singbox_version }}"
+      - name: Mirror pinned awgm-box
+        env:
+          SINGBOX_RELEASE_BASE_URL: ${{ env.AWG_DEVELOP_RELEASE_BASE_URL }}
+        run: python3 scripts/prepare-release-assets.py mirror-singbox "${{ matrix.arch }}"
 
       - name: Build
         id: build
@@ -204,6 +135,7 @@ jobs:
 
           SKIP_FRONTEND_BUILD=1 ./scripts/build-ipk.sh "$IPK_VERSION" "${{ matrix.arch }}"
           VERSION="$IPK_VERSION" ./awgmautolist/build-ipk.sh "${{ matrix.arch }}"
+          python3 scripts/prepare-release-assets.py package-index "${{ matrix.arch }}" --version "$IPK_VERSION"
 
       - name: Upload result
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -212,8 +144,8 @@ jobs:
           path: |
             dist/awg-manager_*_${{ matrix.arch }}-kn.ipk
             dist/awgmautolist_*_${{ matrix.arch }}-kn.ipk
-            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}
-            dist/sing-box-${{ needs.version.outputs.singbox_version }}-${{ matrix.arch }}.sha256
+            dist/awgm-box-*-${{ matrix.arch }}
+            dist/Packages-${{ matrix.arch }}.gz
             dist/VERSION
           if-no-files-found: error
 
@@ -238,6 +170,9 @@ jobs:
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-version: 1.26.4
+
+      - name: Test release asset preparation
+        run: python3 -m unittest discover -s scripts -p test_prepare_release_assets.py
 
       - name: Run go tests with backend coverage
         shell: bash
@@ -393,7 +328,7 @@ jobs:
           set -euo pipefail
 
           shopt -s nullglob
-          files=(./dist/awg-manager_* ./dist/awgmautolist_* ./dist/sing-box-* ./dist/VERSION ./dist/CHANGELOG.md ./dist/RELEASED_SHA)
+          files=(./dist/awg-manager_* ./dist/awgmautolist_* ./dist/awgm-box-* ./dist/Packages-*.gz ./dist/VERSION ./dist/CHANGELOG.md ./dist/RELEASED_SHA)
 
           if (( ${#files[@]} == 0 )); then
             echo "No release files found in ./dist"

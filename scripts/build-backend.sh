@@ -11,11 +11,11 @@ VERSION="${VERSION:-$(cat "$PROJECT_ROOT/VERSION" 2>/dev/null || echo "dev")}"
 # Set by build-ipk.sh; defaults to empty for direct invocations.
 ENTWARE_ARCH="${ENTWARE_ARCH:-}"
 
-# Base URL for awg-manager self-update assets. Must be supplied by the build
-# environment so release forks/mirrors do not require code changes.
-: "${AWG_RELEASE_BASE_URL:?AWG_RELEASE_BASE_URL must be set, e.g. https://github.com/miuirussia/awg-manager/releases/download/latest}"
+# Release mirrors can be overridden by the build environment.
+: "${AWG_RELEASE_BASE_URL:=https://github.com/miuirussia/awg-manager/releases/latest/download}"
+: "${AWG_DEVELOP_RELEASE_BASE_URL:=https://github.com/miuirussia/awg-manager/releases/download/latest}"
 : "${AWG_CHANGELOG_URL:=${AWG_RELEASE_BASE_URL%/}/CHANGELOG.md}"
-LD_FLAGS="-s -w -X main.version=${VERSION} -X main.buildArch=${ENTWARE_ARCH} -X github.com/hoaxisr/awg-manager/internal/updater.releaseBaseURL=${AWG_RELEASE_BASE_URL} -X github.com/hoaxisr/awg-manager/internal/updater.changelogURL=${AWG_CHANGELOG_URL}"
+LD_FLAGS="-s -w -X main.version=${VERSION} -X main.buildArch=${ENTWARE_ARCH} -X github.com/hoaxisr/awg-manager/internal/updater.releaseBaseURL=${AWG_RELEASE_BASE_URL} -X github.com/hoaxisr/awg-manager/internal/updater.developReleaseBaseURL=${AWG_DEVELOP_RELEASE_BASE_URL} -X github.com/hoaxisr/awg-manager/internal/updater.changelogURL=${AWG_CHANGELOG_URL}"
 
 # Architecture (default: mipsle for MT7621)
 ARCH="${1:-mipsle}"

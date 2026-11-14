@@ -35,44 +35,49 @@ func TestArchSuffix(t *testing.T) {
 	}
 }
 
-// --- Check with mock HTTP server returning release VERSION ---
+// --- Check with mock HTTP server returning gzipped Packages ---
 
-func newMockReleaseServer(version string, statusCode int) *httptest.Server {
+// newMockEntwareServer returns an httptest server that serves gzipped Packages
+// content for any /<arch>/Packages.gz path. statusCode is the response code
+// (use 200 for success cases). packagesContent is the plain (un-gzipped) text
+// of the index — gzipBytes is applied here to match the real server.
+func newMockEntwareServer(t *testing.T, packagesContent string, statusCode int) *httptest.Server {
+	gzData := gzipBytes(t, packagesContent)
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/VERSION" {
-			http.NotFound(w, r)
-			return
-		}
+		w.Header().Set("Content-Type", "application/octet-stream")
 		w.WriteHeader(statusCode)
 		if statusCode == http.StatusOK {
-			w.Write([]byte(version))
+			w.Write(gzData)
 		}
 	}))
 }
 
-// withMockRelease points releaseBaseURL at srv.URL for the duration of the test.
-func withMockRelease(t *testing.T, srv *httptest.Server) {
+// withMockRepo points releaseBaseURL at srv.URL for the duration of the test.
+func withMockRepo(t *testing.T, srv *httptest.Server) {
 	t.Helper()
 	old := releaseBaseURL
+	oldDevelop := developReleaseBaseURL
 	releaseBaseURL = srv.URL
-	t.Cleanup(func() { releaseBaseURL = old })
+	developReleaseBaseURL = srv.URL
+	t.Cleanup(func() { releaseBaseURL = old; developReleaseBaseURL = oldDevelop })
 }
 
 func TestCheck_UpdateAvailable(t *testing.T) {
 	arch := archSuffix()
-	ipkName := "awg-manager_9.9.9+r5_" + arch + "-kn.ipk"
+	ipkName := "awg-manager_9.9.9_" + arch + "-kn.ipk"
+	body := "Package: awg-manager\nVersion: 9.9.9\nFilename: " + ipkName + "\n"
 
-	srv := newMockReleaseServer("9.9.9+r5\n", http.StatusOK)
+	srv := newMockEntwareServer(t, body, http.StatusOK)
 	defer srv.Close()
-	withMockRelease(t, srv)
+	withMockRepo(t, srv)
 
 	info := checkWithDownloader(context.Background(), "2.0.0", channelStable, newDefaultDownloader(), nil)
 
 	if !info.Available {
 		t.Fatal("expected Available=true")
 	}
-	if info.LatestVersion != "9.9.9+r5" {
-		t.Errorf("LatestVersion = %q, want 9.9.9+r5", info.LatestVersion)
+	if info.LatestVersion != "9.9.9" {
+		t.Errorf("LatestVersion = %q, want 9.9.9", info.LatestVersion)
 	}
 	wantURL := srv.URL + "/" + ipkName
 	if info.DownloadURL != wantURL {
@@ -83,26 +88,42 @@ func TestCheck_UpdateAvailable(t *testing.T) {
 	}
 }
 
-func TestCheck_UpdateAvailableForNewerBuildRevision(t *testing.T) {
-	srv := newMockReleaseServer("2.7.10+r42\n", http.StatusOK)
-	defer srv.Close()
-	withMockRelease(t, srv)
+func TestCheck_PicksHighestOfMultipleBlocks(t *testing.T) {
+	arch := archSuffix()
+	body := `Package: awg-manager
+Version: 2.6.5
+Filename: awg-manager_2.6.5_` + arch + `-kn.ipk
 
-	info := checkWithDownloader(context.Background(), "2.7.10+r41", channelStable, newDefaultDownloader(), nil)
+Package: awg-manager
+Version: 2.7.10
+Filename: awg-manager_2.7.10_` + arch + `-kn.ipk
+
+Package: awg-manager
+Version: 2.7.3
+Filename: awg-manager_2.7.3_` + arch + `-kn.ipk
+`
+	srv := newMockEntwareServer(t, body, http.StatusOK)
+	defer srv.Close()
+	withMockRepo(t, srv)
+
+	info := checkWithDownloader(context.Background(), "2.0.0", channelStable, newDefaultDownloader(), nil)
 	if !info.Available {
 		t.Fatal("expected Available=true")
 	}
-	if info.LatestVersion != "2.7.10+r42" {
-		t.Errorf("LatestVersion = %q, want 2.7.10+r42", info.LatestVersion)
+	if info.LatestVersion != "2.7.10" {
+		t.Errorf("LatestVersion = %q, want 2.7.10", info.LatestVersion)
 	}
 }
 
 func TestCheck_AlreadyUpToDate(t *testing.T) {
-	srv := newMockReleaseServer("2.3.11+r7\n", http.StatusOK)
-	defer srv.Close()
-	withMockRelease(t, srv)
+	arch := archSuffix()
+	body := "Package: awg-manager\nVersion: 2.3.11\nFilename: awg-manager_2.3.11_" + arch + "-kn.ipk\n"
 
-	info := checkWithDownloader(context.Background(), "2.3.11+r7", channelStable, newDefaultDownloader(), nil)
+	srv := newMockEntwareServer(t, body, http.StatusOK)
+	defer srv.Close()
+	withMockRepo(t, srv)
+
+	info := checkWithDownloader(context.Background(), "2.3.11", channelStable, newDefaultDownloader(), nil)
 	if info.Available {
 		t.Fatal("expected Available=false (same version)")
 	}
@@ -111,49 +132,60 @@ func TestCheck_AlreadyUpToDate(t *testing.T) {
 	}
 }
 
-func TestCheck_BuildRevisionSameAsRelease(t *testing.T) {
-	srv := newMockReleaseServer("2.11.2\n", http.StatusOK)
+func TestCheck_BuildRevisionSameAsRepoRelease(t *testing.T) {
+	arch := archSuffix()
+	body := "Package: awg-manager\nVersion: 2.11.2\nFilename: awg-manager_2.11.2_" + arch + "-kn.ipk\n"
+
+	srv := newMockEntwareServer(t, body, http.StatusOK)
 	defer srv.Close()
-	withMockRelease(t, srv)
+	withMockRepo(t, srv)
 
 	info := checkWithDownloader(context.Background(), "2.11.2+r70", channelStable, newDefaultDownloader(), nil)
 	if info.Available {
-		t.Fatal("expected Available=false when release matches base of build revision")
+		t.Fatal("expected Available=false when repo release matches base of build revision")
 	}
 	if info.LatestVersion != "" {
 		t.Errorf("LatestVersion = %q, want empty", info.LatestVersion)
 	}
 }
 
-func TestCheck_NewerThanRelease(t *testing.T) {
-	srv := newMockReleaseServer("2.3.10+r1\n", http.StatusOK)
-	defer srv.Close()
-	withMockRelease(t, srv)
+func TestCheck_NewerThanRepo(t *testing.T) {
+	arch := archSuffix()
+	body := "Package: awg-manager\nVersion: 2.3.10\nFilename: awg-manager_2.3.10_" + arch + "-kn.ipk\n"
 
-	info := checkWithDownloader(context.Background(), "2.3.11+r1", channelStable, newDefaultDownloader(), nil)
+	srv := newMockEntwareServer(t, body, http.StatusOK)
+	defer srv.Close()
+	withMockRepo(t, srv)
+
+	info := checkWithDownloader(context.Background(), "2.3.11", channelStable, newDefaultDownloader(), nil)
 	if info.Available {
 		t.Fatal("expected Available=false (current is newer)")
 	}
 }
 
-func TestCheck_EmptyVersionFile(t *testing.T) {
-	srv := newMockReleaseServer("\n", http.StatusOK)
+func TestCheck_PackageMissing(t *testing.T) {
+	body := "Package: curl\nVersion: 8.0.1\nFilename: curl_8.0.1.ipk\n"
+
+	srv := newMockEntwareServer(t, body, http.StatusOK)
 	defer srv.Close()
-	withMockRelease(t, srv)
+	withMockRepo(t, srv)
 
 	info := checkWithDownloader(context.Background(), "2.0.0", channelStable, newDefaultDownloader(), nil)
 	if info.Available {
-		t.Fatal("expected Available=false when VERSION is empty")
+		t.Fatal("expected Available=false when package not found in index")
 	}
 	if info.Error == "" {
-		t.Fatal("expected error mentioning empty VERSION")
+		t.Fatal("expected error mentioning missing package")
 	}
 }
 
 func TestCheck_HTTPError(t *testing.T) {
-	srv := newMockReleaseServer("internal error", http.StatusInternalServerError)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("internal error"))
+	}))
 	defer srv.Close()
-	withMockRelease(t, srv)
+	withMockRepo(t, srv)
 
 	info := checkWithDownloader(context.Background(), "2.0.0", channelStable, newDefaultDownloader(), nil)
 	if info.Available {
@@ -166,7 +198,6 @@ func TestCheck_HTTPError(t *testing.T) {
 
 func TestCheck_DevelopDetectsNewerRevision(t *testing.T) {
 	arch := archSuffix()
-	archDir := archSuffixToRepoDir(arch)
 	ipk := "awg-manager_2.11.2+r71_" + arch + "-kn.ipk"
 	packages := "Package: awg-manager\nVersion: 2.11.2+r71\nFilename: " + ipk + "\n"
 
@@ -180,10 +211,7 @@ func TestCheck_DevelopDetectsNewerRevision(t *testing.T) {
 
 	info := checkWithDownloader(context.Background(), "2.11.2+r70", "develop", dl, nil)
 
-	if !strings.Contains(seen.URL, "/develop/") {
-		t.Errorf("request URL %q does not contain /develop/", seen.URL)
-	}
-	wantSuffix := archDir + "/Packages.gz"
+	wantSuffix := "/Packages-" + arch + ".gz"
 	if !strings.HasSuffix(seen.URL, wantSuffix) {
 		t.Errorf("request URL %q does not end with %q", seen.URL, wantSuffix)
 	}
@@ -193,7 +221,7 @@ func TestCheck_DevelopDetectsNewerRevision(t *testing.T) {
 	if info.LatestVersion != "2.11.2+r71" {
 		t.Errorf("LatestVersion = %q, want 2.11.2+r71", info.LatestVersion)
 	}
-	wantURL := entwareRepoURL + "/develop/" + archDir + "/" + ipk
+	wantURL := developReleaseBaseURL + "/" + ipk
 	if info.DownloadURL != wantURL {
 		t.Errorf("DownloadURL = %q, want %q", info.DownloadURL, wantURL)
 	}
@@ -201,7 +229,6 @@ func TestCheck_DevelopDetectsNewerRevision(t *testing.T) {
 
 func TestCheck_DevelopSameRevisionUpToDate(t *testing.T) {
 	arch := archSuffix()
-	archDir := archSuffixToRepoDir(arch)
 	ipk := "awg-manager_2.11.2+r70_" + arch + "-kn.ipk"
 	packages := "Package: awg-manager\nVersion: 2.11.2+r70\nFilename: " + ipk + "\n"
 
@@ -215,10 +242,7 @@ func TestCheck_DevelopSameRevisionUpToDate(t *testing.T) {
 
 	info := checkWithDownloader(context.Background(), "2.11.2+r70", "develop", dl, nil)
 
-	if !strings.Contains(seen.URL, "/develop/") {
-		t.Errorf("request URL %q does not contain /develop/", seen.URL)
-	}
-	wantSuffix := archDir + "/Packages.gz"
+	wantSuffix := "/Packages-" + arch + ".gz"
 	if !strings.HasSuffix(seen.URL, wantSuffix) {
 		t.Errorf("request URL %q does not end with %q", seen.URL, wantSuffix)
 	}
