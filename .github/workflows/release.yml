@@ -13,8 +13,9 @@ permissions:
   contents: write
 
 env:
-  AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
-  AWG_CHANGELOG_URL: https://github.com/miuirussia/awg-manager/releases/download/latest/CHANGELOG.md
+  AWG_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/latest/download
+  AWG_DEVELOP_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/latest
+  AWG_CHANGELOG_URL: https://github.com/miuirussia/awg-manager/releases/latest/download/CHANGELOG.md
 
 jobs:
   version:
@@ -64,6 +65,11 @@ jobs:
             || { echo "::error::brandIcons.ts is stale — run 'node scripts/generate-brand-icons.mjs' and commit"; exit 1; }
           npm run build
 
+      - name: Mirror pinned awgm-box
+        env:
+          SINGBOX_RELEASE_BASE_URL: https://github.com/miuirussia/awg-manager/releases/download/${{ github.ref_name }}
+        run: python3 scripts/prepare-release-assets.py mirror-singbox "${{ matrix.arch }}"
+
       - name: Build .ipk
         env:
           IPK_VERSION: ${{ needs.version.outputs.version }}
@@ -74,6 +80,7 @@ jobs:
           echo "$IPK_VERSION" > dist/VERSION
           SKIP_FRONTEND_BUILD=1 ./scripts/build-ipk.sh "$IPK_VERSION" "${{ matrix.arch }}"
           VERSION="$IPK_VERSION" ./awgmautolist/build-ipk.sh "${{ matrix.arch }}"
+          python3 scripts/prepare-release-assets.py package-index "${{ matrix.arch }}" --version "$IPK_VERSION"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -82,6 +89,8 @@ jobs:
           path: |
             dist/awg-manager_*_${{ matrix.arch }}-kn.ipk
             dist/awgmautolist_*_${{ matrix.arch }}-kn.ipk
+            dist/awgm-box-*-${{ matrix.arch }}
+            dist/Packages-${{ matrix.arch }}.gz
           if-no-files-found: error
 
   test:
@@ -98,6 +107,7 @@ jobs:
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-version: 1.26.4
+      - run: python3 -m unittest discover -s scripts -p test_prepare_release_assets.py
       - run: go test ./...
       # Вложенный модуль в `./...` из корня не попадает — свой прогон.
       - working-directory: awgmproto
@@ -179,6 +189,7 @@ jobs:
           gh release create "$TAG" \
             ./dist/awg-manager_*.ipk \
             ./dist/awgmautolist_*.ipk \
+            ./dist/awgm-box-* ./dist/Packages-*.gz \
             CHANGELOG.md VERSION \
             --title "$TAG" \
             --notes-file /tmp/notes.md \
