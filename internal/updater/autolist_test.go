@@ -63,8 +63,9 @@ func TestDownloadAutolistPackageChannels(t *testing.T) {
 		packageVersion string
 	}{
 		{name: "stable build", version: "2.20.3", packageChannel: channelStable, packageVersion: "2.20.3"},
-		{name: "develop build with default settings", version: "2.20.3+r1", packageChannel: channelDevelop, packageVersion: "2.20.3+r2"},
-		{name: "develop build with stable updates", version: "2.20.3+r1", channel: channelStable, packageChannel: channelDevelop, packageVersion: "2.20.3+r2"},
+		{name: "revision build with default settings", version: "2.20.3+r1", packageChannel: channelStable, packageVersion: "2.20.3+r2"},
+		{name: "revision build with stable updates", version: "2.20.3+r1", channel: channelStable, packageChannel: channelStable, packageVersion: "2.20.3+r2"},
+		{name: "revision build with develop updates", version: "2.20.3+r1", channel: channelDevelop, packageChannel: channelDevelop, packageVersion: "2.20.3+r2"},
 		{name: "develop updates", version: "2.20.3", channel: channelDevelop, packageChannel: channelDevelop, packageVersion: "2.20.3+r2"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

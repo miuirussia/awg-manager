@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/hoaxisr/awg-manager/internal/downloader"
 	"github.com/hoaxisr/awg-manager/internal/sys/appver"
@@ -13,7 +12,7 @@ import (
 )
 
 // DownloadAutolistPackage downloads the satellite from the update channel.
-// Develop builds use their own channel even when panel updates track stable.
+// Revisions can be published to either channel; honor the configured channel.
 func (s *Service) DownloadAutolistPackage(ctx context.Context, arch, destPath string) error {
 	switch arch {
 	case "mipsel-3.4", "mips-3.4", "aarch64-3.10":
@@ -21,9 +20,6 @@ func (s *Service) DownloadAutolistPackage(ctx context.Context, arch, destPath st
 		return fmt.Errorf("unsupported awgmautolist architecture: %q", arch)
 	}
 	channel := s.channel()
-	if strings.Contains(s.version, "+r") {
-		channel = channelDevelop
-	}
 	if channelBaseURL(channel) == "" {
 		return fmt.Errorf("release URL is not configured")
 	}

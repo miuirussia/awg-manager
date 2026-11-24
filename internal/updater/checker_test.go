@@ -149,6 +149,39 @@ func TestCheck_BuildRevisionSameAsRepoRelease(t *testing.T) {
 	}
 }
 
+func TestCheck_RevisionUpdates(t *testing.T) {
+	for _, channel := range []string{channelStable, channelDevelop} {
+		t.Run(channel, func(t *testing.T) {
+			for _, tc := range []struct {
+				name      string
+				current   string
+				available bool
+			}{
+				{name: "new revision", current: "2.20.6+r5", available: true},
+				{name: "same revision", current: "2.20.6+r6"},
+				{name: "newer revision installed", current: "2.20.6+r7"},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					filename := "awg-manager_2.20.6+r6_" + archSuffix() + "-kn.ipk"
+					srv := newMockEntwareServer(t, "Package: awg-manager\nVersion: 2.20.6+r6\nFilename: "+filename+"\n", http.StatusOK)
+					defer srv.Close()
+					withMockRepo(t, srv)
+					info := checkWithDownloader(context.Background(), tc.current, channel, newDefaultDownloader(), nil)
+					if info.Error != "" {
+						t.Fatal(info.Error)
+					}
+					if info.Available != tc.available {
+						t.Fatalf("Available = %v, want %v", info.Available, tc.available)
+					}
+					if tc.available && info.DownloadURL != srv.URL+"/"+filename {
+						t.Fatalf("DownloadURL = %q, want revision package", info.DownloadURL)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestCheck_NewerThanRepo(t *testing.T) {
 	arch := archSuffix()
 	body := "Package: awg-manager\nVersion: 2.3.10\nFilename: awg-manager_2.3.10_" + arch + "-kn.ipk\n"
