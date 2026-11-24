@@ -120,6 +120,7 @@ jobs:
             dist/awgmautolist_*_${{ matrix.arch }}-kn.ipk
             dist/awgm-box-*-${{ matrix.arch }}
             dist/Packages-${{ matrix.arch }}.gz
+            dist/VERSION
           if-no-files-found: error
 
   test:
@@ -219,7 +220,7 @@ jobs:
             ./dist/awg-manager_*.ipk \
             ./dist/awgmautolist_*.ipk \
             ./dist/awgm-box-* ./dist/Packages-*.gz \
-            CHANGELOG.md VERSION \
+            CHANGELOG.md ./dist/VERSION \
             --title "$TAG" \
             --notes-file /tmp/notes.md \
             "${extra[@]}"
