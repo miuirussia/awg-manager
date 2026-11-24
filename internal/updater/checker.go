@@ -46,15 +46,6 @@ func channelBaseURL(channel string) string {
 	return strings.TrimRight(releaseBaseURL, "/")
 }
 
-// versionComparator выбирает сравнялку версий по каналу: develop учитывает
-// build-revision (+rN), stable — нет (как было).
-func versionComparator(channel string) func(a, b string) int {
-	if channel == channelDevelop {
-		return semver.CompareWithRevision
-	}
-	return semver.Compare
-}
-
 // checkWithDownloader queries the release mirror's package index for the latest
 // awg-manager version and returns update info including the .ipk download URL
 // if a newer version is available.
@@ -65,7 +56,7 @@ func checkWithDownloader(ctx context.Context, currentVersion, channel string, dl
 		CheckedAt:      time.Now(),
 	}
 
-	cmp := versionComparator(channel)
+	cmp := semver.CompareWithRevision
 	base := channelBaseURL(channel)
 	pkgsURL := releaseAssetURL(channel, "Packages-"+archSuffix()+".gz")
 

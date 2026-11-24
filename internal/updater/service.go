@@ -236,14 +236,12 @@ func (s *Service) CheckNow(ctx context.Context) *UpdateInfo {
 // DownloadPackage downloads a package from the selected channel and verifies
 // its checksum. The caller owns the returned file and must remove it.
 func (s *Service) DownloadPackage(ctx context.Context, channel, packageName string) (string, error) {
-	base := channelBaseURL(channel)
-	archDir := archSuffixToRepoDir(archSuffix())
-	pkgsURL := fmt.Sprintf("%s/%s/Packages.gz", base, archDir)
+	pkgsURL := releaseAssetURL(channel, "Packages-"+archSuffix()+".gz")
 	pkg, err := fetchLatestPackageWithDownloader(ctx, s.downloader, pkgsURL, packageName, semver.CompareWithRevision, s.statsHeaders())
 	if err != nil {
 		return "", fmt.Errorf("entware repo: %w", err)
 	}
-	downloadURL := fmt.Sprintf("%s/%s/%s", base, archDir, pkg.Filename)
+	downloadURL := releaseAssetURL(channel, pkg.Filename)
 	return downloadPackage(ctx, downloadURL, pkg.SHA256, s.downloader)
 }
 
