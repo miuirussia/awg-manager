@@ -377,6 +377,7 @@ type snapshotSettingsRouterSchema struct {
 	BypassPresets           []string `json:"bypassPresets"`
 	BypassExtraPorts        string   `json:"bypassExtraPorts"`
 	BypassExtraSubnets      string   `json:"bypassExtraSubnets"`
+	BypassDevices           []string `json:"bypassDevices"`
 	BypassGeoIPTags         []string `json:"bypassGeoipTags"`
 	IngressInterfaces       []string `json:"ingressInterfaces"`
 	SSTPIngress             bool     `json:"sstpIngress"`
