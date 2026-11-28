@@ -896,6 +896,9 @@ body:has(> .modal-backdrop) .toast-container {
 	.settings-layout .inline-form > * {
 		flex: 1 1 auto;
 	}
+	.setting-actions > .update-spinner {
+		flex: 0 0 20px;
+	}
 
 	.settings-layout .inline-form,
 	.setting-actions {
