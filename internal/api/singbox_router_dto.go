@@ -274,22 +274,35 @@ type SingboxRouterOutboundDTO struct {
 
 // SingboxRouterDesyncFieldsDTO mirrors router.DesyncFields.
 type SingboxRouterDesyncFieldsDTO struct {
-	Preset      string                          `json:"preset,omitempty" example:"auto"`
-	Mode        string                          `json:"mode,omitempty" example:"split"`
-	SplitPos    string                          `json:"split_pos,omitempty" example:"midsld"`
-	FakeSNI     string                          `json:"fake_sni,omitempty" example:"example.org"`
-	FakeSNIPool []string                        `json:"fake_sni_pool,omitempty"`
-	FakeHost    string                          `json:"fake_host,omitempty"`
-	Repeats     int                             `json:"repeats,omitempty"`
-	TTL         int                             `json:"ttl,omitempty" example:"3"`
-	Fooling     string                          `json:"fooling,omitempty" example:"badseq"`
-	AutoTTL     bool                            `json:"autottl,omitempty"`
-	TLSRecFirst bool                            `json:"tlsrec_first,omitempty"`
-	UDPMode     string                          `json:"udp_mode,omitempty" example:"auto"`
-	UDPTTL      int                             `json:"udp_ttl,omitempty"`
-	UDPRepeats  int                             `json:"udp_repeats,omitempty"`
-	AutoTune    *bool                           `json:"auto_tune,omitempty"`
-	Adaptive    *SingboxRouterDesyncAdaptiveDTO `json:"adaptive,omitempty"`
+	Preset          string                          `json:"preset,omitempty" example:"auto"`
+	Mode            string                          `json:"mode,omitempty" example:"split"`
+	SplitPos        string                          `json:"split_pos,omitempty" example:"midsld"`
+	FakeSNI         string                          `json:"fake_sni,omitempty" example:"example.org"`
+	FakeSNIPool     []string                        `json:"fake_sni_pool,omitempty"`
+	FakeHost        string                          `json:"fake_host,omitempty"`
+	Repeats         int                             `json:"repeats,omitempty"`
+	TTL             int                             `json:"ttl,omitempty" example:"3"`
+	Fooling         string                          `json:"fooling,omitempty" example:"badseq"`
+	AutoTTL         *bool                           `json:"autottl,omitempty"`
+	TLSRecFirst     *bool                           `json:"tlsrec_first,omitempty"`
+	UDPMode         string                          `json:"udp_mode,omitempty" example:"auto"`
+	UDPTTL          int                             `json:"udp_ttl,omitempty"`
+	UDPRepeats      int                             `json:"udp_repeats,omitempty"`
+	AutoTune        *bool                           `json:"auto_tune,omitempty"`
+	Adaptive        *SingboxRouterDesyncAdaptiveDTO `json:"adaptive,omitempty"`
+	TLSRecPos       string                          `json:"tlsrec_pos,omitempty"`
+	SegmentOrder    string                          `json:"segment_order,omitempty"`
+	FakePlacement   string                          `json:"fake_placement,omitempty"`
+	FakeDelay       string                          `json:"fake_delay,omitempty"`
+	FakeTLSRandom   *bool                           `json:"fake_tls_random,omitempty"`
+	FakeTLSSize     *int                            `json:"fake_tls_size,omitempty"`
+	FakeTLSTemplate string                          `json:"fake_tls_template,omitempty"`
+	HTTPMod         string                          `json:"http_mod,omitempty"`
+	HostFakeMode    string                          `json:"hostfake_mode,omitempty"`
+	QUICDesync      *bool                           `json:"quic_desync,omitempty"`
+	QUICRepeats     *int                            `json:"quic_repeats,omitempty"`
+	QUICSplitPos    string                          `json:"quic_split_pos,omitempty"`
+	QUICOrder       string                          `json:"quic_order,omitempty"`
 }
 
 // SingboxRouterDesyncAdaptiveDTO mirrors router.DesyncAdaptive.
@@ -299,6 +312,8 @@ type SingboxRouterDesyncAdaptiveDTO struct {
 	MaxEntries    int    `json:"max_entries,omitempty" example:"1024"`
 	TTL           string `json:"ttl,omitempty" example:"24h"`
 	Timeout       string `json:"timeout,omitempty" example:"10s"`
+	MaxBuffer     *int   `json:"max_buffer,omitempty"`
+	NetworkID     string `json:"network_id,omitempty"`
 }
 
 // SingboxRouterOutboundsListResponse is the envelope for GET /singbox/router/outbounds/list.

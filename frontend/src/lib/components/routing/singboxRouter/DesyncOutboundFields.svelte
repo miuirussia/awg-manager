@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { m } from '$lib/i18n';
-	import { Dropdown, Toggle, type DropdownOption } from '$lib/components/ui';
+	import { Dropdown, type DropdownOption } from '$lib/components/ui';
 	import { DESYNC_FOOLING, DESYNC_MODES, DESYNC_PRESETS, DESYNC_UDP_MODES, type DesyncDraft } from './desyncDraft';
 
 	interface Props {
@@ -16,7 +16,10 @@
 	const modeOptions = opts(DESYNC_MODES);
 	const foolingOptions = opts(DESYNC_FOOLING);
 	const udpModeOptions = opts(DESYNC_UDP_MODES);
-	const autoTuneOptions: DropdownOption[] = [
+	const fakePlacementOptions = opts(['before', 'between', 'before_between']);
+	const fakeTemplateOptions = opts(['original', 'compact']);
+	const hostFakeOptions = opts(['legacy', 'replace']);
+	const boolOptions: DropdownOption<DesyncDraft['auto_tune']>[] = [
 		{ value: '', label: m.routing_desync_by_preset() },
 		{ value: 'on', label: m.routing_desync_on() },
 		{ value: 'off', label: m.routing_desync_off() },
@@ -70,9 +73,60 @@
 	</div>
 </div>
 <div class="row2">
-	<Toggle checked={draft.autottl} onchange={(v) => (draft.autottl = v)} label="autottl" hint={m.routing_desync_autottl_hint()} size="sm" />
-	<Toggle checked={draft.tlsrec_first} onchange={(v) => (draft.tlsrec_first = v)} label="tlsrec_first" size="sm" />
+	<div class="field">
+		<Dropdown label="autottl" bind:value={draft.autottl} options={boolOptions} hint={m.routing_desync_autottl_hint()} fullWidth />
+	</div>
+	<div class="field">
+		<Dropdown label="tlsrec_first" bind:value={draft.tlsrec_first} options={boolOptions} fullWidth />
+	</div>
 </div>
+
+<details class="extended-fields">
+	<summary>{m.routing_desync_tcp_extended()}</summary>
+	<div class="form">
+		<div class="type-hint">{m.routing_desync_tcp_extended_hint()}</div>
+		<div class="row2">
+			<label class="field">
+				<div class="lbl">tlsrec_pos</div>
+				<input bind:value={draft.tlsrec_pos} placeholder="midsld" />
+			</label>
+			<label class="field">
+				<div class="lbl">segment_order</div>
+				<input bind:value={draft.segment_order} placeholder="reverse / sni_last / 2,1,3" />
+			</label>
+		</div>
+		<div class="row2">
+			<label class="field">
+				<div class="lbl">http_mod</div>
+				<input bind:value={draft.http_mod} placeholder="hcsmix,dcsmix,rmspace" />
+			</label>
+			<div class="field">
+				<Dropdown label="hostfake_mode" bind:value={draft.hostfake_mode} options={hostFakeOptions} fullWidth />
+			</div>
+		</div>
+		<div class="row2">
+			<div class="field">
+				<Dropdown label="fake_placement" bind:value={draft.fake_placement} options={fakePlacementOptions} fullWidth />
+			</div>
+			<label class="field">
+				<div class="lbl">fake_delay</div>
+				<input bind:value={draft.fake_delay} placeholder="0s" />
+			</label>
+		</div>
+		<div class="row2">
+			<div class="field">
+				<Dropdown label="fake_tls_random" bind:value={draft.fake_tls_random} options={boolOptions} fullWidth />
+			</div>
+			<label class="field">
+				<div class="lbl">fake_tls_size</div>
+				<input bind:value={draft.fake_tls_size} inputmode="numeric" placeholder="0" />
+			</label>
+		</div>
+		<div class="field">
+			<Dropdown label="fake_tls_template" bind:value={draft.fake_tls_template} options={fakeTemplateOptions} fullWidth />
+		</div>
+	</div>
+</details>
 
 <div class="form-section form-section-divided"><div class="section-label">UDP / QUIC</div></div>
 <div class="row3">
@@ -90,10 +144,31 @@
 	</label>
 </div>
 
+<div class="row2">
+	<div class="field">
+		<Dropdown label="quic_desync" bind:value={draft.quic_desync} options={boolOptions} fullWidth />
+	</div>
+	<label class="field">
+		<div class="lbl">quic_repeats</div>
+		<input bind:value={draft.quic_repeats} inputmode="numeric" placeholder="0" />
+	</label>
+</div>
+<div class="row2">
+	<label class="field">
+		<div class="lbl">quic_split_pos</div>
+		<input bind:value={draft.quic_split_pos} placeholder="sni+1,endhost-1" />
+	</label>
+	<label class="field">
+		<div class="lbl">quic_order</div>
+		<input bind:value={draft.quic_order} placeholder="reverse / sni_last / 2,1,3" />
+	</label>
+</div>
+<div class="type-hint">{m.routing_desync_quic_hint()}</div>
+
 <div class="form-section form-section-divided"><div class="section-label">Adaptive</div></div>
 <div class="field">
 	<div class="lbl">auto_tune</div>
-	<Dropdown bind:value={draft.auto_tune} options={autoTuneOptions} fullWidth />
+	<Dropdown bind:value={draft.auto_tune} options={boolOptions} fullWidth />
 	<div class="type-hint">{m.routing_desync_adaptive_hint()}</div>
 </div>
 <div class="row3">
@@ -121,6 +196,17 @@
 	</label>
 </div>
 
+<div class="row2">
+	<label class="field">
+		<div class="lbl">max_buffer</div>
+		<input bind:value={draft.max_buffer} inputmode="numeric" placeholder="32768" />
+	</label>
+	<label class="field">
+		<div class="lbl">network_id</div>
+		<input bind:value={draft.network_id} placeholder="wan-1" />
+	</label>
+</div>
+
 <label class="field">
 	<div class="lbl">strategy</div>
 	<input bind:value={draft.strategy} placeholder="seqovl=1 ipfrag=24" />
@@ -128,6 +214,11 @@
 </label>
 
 <style>
+	.extended-fields summary {
+		cursor: pointer;
+		padding: 0.5rem 0;
+	}
+
 	.row3 {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));

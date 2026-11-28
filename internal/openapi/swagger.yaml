@@ -4875,11 +4875,15 @@ definitions:
       max_attempts:
         example: 3
         type: integer
+      max_buffer:
+        type: integer
       max_concurrent:
         type: integer
       max_entries:
         example: 1024
         type: integer
+      network_id:
+        type: string
       timeout:
         example: 10s
         type: string
@@ -5235,7 +5239,11 @@ definitions:
       default:
         example: awg-vpn0
         type: string
+      fake_delay:
+        type: string
       fake_host:
+        type: string
+      fake_placement:
         type: string
       fake_sni:
         example: example.org
@@ -5244,8 +5252,18 @@ definitions:
         items:
           type: string
         type: array
+      fake_tls_random:
+        type: boolean
+      fake_tls_size:
+        type: integer
+      fake_tls_template:
+        type: string
       fooling:
         example: badseq
+        type: string
+      hostfake_mode:
+        type: string
+      http_mod:
         type: string
       interval:
         example: 3m
@@ -5262,8 +5280,18 @@ definitions:
       preset:
         example: auto
         type: string
+      quic_desync:
+        type: boolean
+      quic_order:
+        type: string
+      quic_repeats:
+        type: integer
+      quic_split_pos:
+        type: string
       repeats:
         type: integer
+      segment_order:
+        type: string
       source:
         enum:
         - router
@@ -5281,6 +5309,8 @@ definitions:
         type: string
       tlsrec_first:
         type: boolean
+      tlsrec_pos:
+        type: string
       tolerance:
         example: 50
         type: integer
