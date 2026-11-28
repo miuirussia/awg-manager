@@ -302,22 +302,35 @@ type Outbound struct {
 // задаются строкой Strategy. Указатели там, где явные false/0 перекрывают
 // пресет (порядок: пресет → strategy → явные поля).
 type DesyncFields struct {
-	Preset      string          `json:"preset,omitempty"`
-	Mode        string          `json:"mode,omitempty"`
-	SplitPos    string          `json:"split_pos,omitempty"`
-	FakeSNI     string          `json:"fake_sni,omitempty"`
-	FakeSNIPool []string        `json:"fake_sni_pool,omitempty"`
-	FakeHost    string          `json:"fake_host,omitempty"`
-	Repeats     int             `json:"repeats,omitempty"`
-	TTL         int             `json:"ttl,omitempty"`
-	Fooling     string          `json:"fooling,omitempty"`
-	AutoTTL     bool            `json:"autottl,omitempty"`
-	TLSRecFirst bool            `json:"tlsrec_first,omitempty"`
-	UDPMode     string          `json:"udp_mode,omitempty"`
-	UDPTTL      int             `json:"udp_ttl,omitempty"`
-	UDPRepeats  int             `json:"udp_repeats,omitempty"`
-	AutoTune    *bool           `json:"auto_tune,omitempty"`
-	Adaptive    *DesyncAdaptive `json:"adaptive,omitempty"`
+	Preset          string          `json:"preset,omitempty"`
+	Mode            string          `json:"mode,omitempty"`
+	SplitPos        string          `json:"split_pos,omitempty"`
+	FakeSNI         string          `json:"fake_sni,omitempty"`
+	FakeSNIPool     []string        `json:"fake_sni_pool,omitempty"`
+	FakeHost        string          `json:"fake_host,omitempty"`
+	Repeats         int             `json:"repeats,omitempty"`
+	TTL             int             `json:"ttl,omitempty"`
+	Fooling         string          `json:"fooling,omitempty"`
+	AutoTTL         *bool           `json:"autottl,omitempty"`
+	TLSRecFirst     *bool           `json:"tlsrec_first,omitempty"`
+	UDPMode         string          `json:"udp_mode,omitempty"`
+	UDPTTL          int             `json:"udp_ttl,omitempty"`
+	UDPRepeats      int             `json:"udp_repeats,omitempty"`
+	AutoTune        *bool           `json:"auto_tune,omitempty"`
+	Adaptive        *DesyncAdaptive `json:"adaptive,omitempty"`
+	TLSRecPos       string          `json:"tlsrec_pos,omitempty"`
+	SegmentOrder    string          `json:"segment_order,omitempty"`
+	FakePlacement   string          `json:"fake_placement,omitempty"`
+	FakeDelay       string          `json:"fake_delay,omitempty"`
+	FakeTLSRandom   *bool           `json:"fake_tls_random,omitempty"`
+	FakeTLSSize     *int            `json:"fake_tls_size,omitempty"`
+	FakeTLSTemplate string          `json:"fake_tls_template,omitempty"`
+	HTTPMod         string          `json:"http_mod,omitempty"`
+	HostFakeMode    string          `json:"hostfake_mode,omitempty"`
+	QUICDesync      *bool           `json:"quic_desync,omitempty"`
+	QUICRepeats     *int            `json:"quic_repeats,omitempty"`
+	QUICSplitPos    string          `json:"quic_split_pos,omitempty"`
+	QUICOrder       string          `json:"quic_order,omitempty"`
 }
 
 type DesyncAdaptive struct {
@@ -326,6 +339,8 @@ type DesyncAdaptive struct {
 	MaxEntries    int    `json:"max_entries,omitempty"`
 	TTL           string `json:"ttl,omitempty"`
 	Timeout       string `json:"timeout,omitempty"`
+	MaxBuffer     *int   `json:"max_buffer,omitempty"`
+	NetworkID     string `json:"network_id,omitempty"`
 }
 
 // CompositeOutboundView is the API/list projection of a composite

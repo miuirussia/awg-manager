@@ -455,6 +455,19 @@ export interface SingboxRouterDesyncFields {
 	udp_mode?: string;
 	udp_ttl?: number;
 	udp_repeats?: number;
+	tlsrec_pos?: string;
+	segment_order?: string;
+	fake_placement?: string;
+	fake_delay?: string;
+	fake_tls_random?: boolean;
+	fake_tls_size?: number;
+	fake_tls_template?: string;
+	http_mod?: string;
+	hostfake_mode?: string;
+	quic_desync?: boolean;
+	quic_repeats?: number;
+	quic_split_pos?: string;
+	quic_order?: string;
 	auto_tune?: boolean;
 	adaptive?: {
 		max_attempts?: number;
@@ -462,6 +475,8 @@ export interface SingboxRouterDesyncFields {
 		max_entries?: number;
 		ttl?: string;
 		timeout?: string;
+		max_buffer?: number;
+		network_id?: string;
 	};
 }
 
