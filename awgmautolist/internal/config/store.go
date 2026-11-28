@@ -15,7 +15,7 @@ import (
 
 var knownFields = []string{
 	"autoAdd", "targetInterface", "resolveVia", "wanCheckUrl",
-	"wanMonitorEnabled", "tunnelProbe", "udpEnabled", "addsPerHour",
+	"wanMonitorEnabled", "tunnelProbe", "udpEnabled", "journalDebug", "addsPerHour",
 	"excludeDomains", "excludeRuleSets",
 }
 

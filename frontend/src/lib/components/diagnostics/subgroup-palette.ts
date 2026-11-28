@@ -14,6 +14,7 @@ export const SUBGROUP_FAMILY: Record<string, SubgroupFamily> = {
   'static-route': 'routing',
   'client-route': 'routing',
   'singbox-router': 'routing',
+  'autolist': 'routing',
   'geodata': 'routing',
   'subscription': 'routing',
   'bypass-set': 'routing',

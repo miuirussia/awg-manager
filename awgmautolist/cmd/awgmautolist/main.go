@@ -56,9 +56,12 @@ func main() {
 	}
 	defer output.Close()
 	logger := log.New(output, "awgmautolist ", log.Ldate|log.Ltime|log.Lmicroseconds)
-	logger.Printf("START version=%s pid=%d", buildinfo.Version, os.Getpid())
+	infof := func(format string, args ...any) { logger.Printf("INFO "+format, args...) }
+	warnf := func(format string, args ...any) { logger.Printf("WARN "+format, args...) }
+	errorf := func(format string, args ...any) { logger.Printf("ERROR "+format, args...) }
+	infof("START version=%s pid=%d", buildinfo.Version, os.Getpid())
 	fatalf := func(format string, args ...any) {
-		logger.Printf("FATAL "+format, args...)
+		errorf("FATAL "+format, args...)
 		_ = output.Close()
 		os.Exit(1)
 	}
@@ -74,18 +77,18 @@ func main() {
 	// config directory BEFORE anything reads the new paths: on the very first
 	// start after an upgrade the migrated config must be the one that loads.
 	// A failed move is logged and retried on the next start.
-	if moved, err := migrate.FromFlatFiles(confDir, migrate.LegacyFlat(), logger.Printf); err != nil {
-		logger.Printf("LEGACY migrate: %v", err)
+	if moved, err := migrate.FromFlatFiles(confDir, migrate.LegacyFlat(), infof); err != nil {
+		infof("LEGACY migrate: %v", err)
 	} else if moved > 0 {
-		logger.Printf("LEGACY migrate: moved %d file(s)", moved)
+		infof("LEGACY migrate: moved %d file(s)", moved)
 	}
 	// The shell-sourced key/enabled/conf get the same one-time move (the init
 	// script already did it before sourcing; standalone starts are covered
 	// here). A fresh key/enabled always wins, sources survive a failed move.
-	if moved, err := migrate.MoveShellFiles(confDir, migrate.LegacyShell(), logger.Printf); err != nil {
-		logger.Printf("LEGACY shell migrate: %v", err)
+	if moved, err := migrate.MoveShellFiles(confDir, migrate.LegacyShell(), infof); err != nil {
+		infof("LEGACY shell migrate: %v", err)
 	} else if moved > 0 {
-		logger.Printf("LEGACY shell migrate: moved %d file(s)", moved)
+		infof("LEGACY shell migrate: moved %d file(s)", moved)
 	}
 	cfgStore := config.NewStore(*configPath)
 	report, err := cfgStore.Load()
@@ -93,7 +96,7 @@ func main() {
 		fatalf("config: %v", err)
 	}
 	for _, warning := range report.Warnings {
-		logger.Printf("CONFIG migration: %s", warning)
+		warnf("CONFIG migration: %s", warning)
 	}
 	statePath := statePathFor(*configPath)
 	stateStore := store.New(statePath)
@@ -103,7 +106,7 @@ func main() {
 	if _, err := os.Stat(statePath); os.IsNotExist(err) {
 		legacyPath := strings.TrimSuffix(*configPath, ".json") + "-history.json"
 		if err := stateStore.ImportLegacyHistory(legacyPath); err != nil {
-			logger.Printf("HISTORY legacy import: %v", err)
+			warnf("HISTORY legacy import: %v", err)
 		}
 	}
 
@@ -130,7 +133,7 @@ func main() {
 		Writer:   writer,
 		CaptureFactory: func(udpAll bool, emit func(capture.Suspect)) engine.Capture {
 			return capture.NewController(interfaces, udpAll, emit, func(err error) {
-				logger.Printf("CAPTURE error=%q", err)
+				errorf("CAPTURE error=%q", err)
 				if eng != nil {
 					eng.CaptureError(err)
 				}
@@ -142,7 +145,7 @@ func main() {
 		fatalf("engine: %v", err)
 	}
 	if eng.Status().SetupRequired {
-		logger.Printf("SETUP required: no target interface configured; the engine is idle until the wizard chooses a tunnel")
+		infof("SETUP required: no target interface configured; the engine is idle until the wizard chooses a tunnel")
 	}
 
 	server := &http.Server{
@@ -152,20 +155,20 @@ func main() {
 	}
 	serverErrors := make(chan error, 1)
 	go func() {
-		logger.Printf("HTTP operational API on http://%s/status", *listen)
+		infof("HTTP operational API on http://%s/status", *listen)
 		serverErrors <- server.ListenAndServe()
 	}()
 	select {
 	case <-ctx.Done():
 	case err := <-serverErrors:
 		if err != nil && err != http.ErrServerClosed {
-			logger.Printf("HTTP error: %v", err)
+			errorf("HTTP error: %v", err)
 			stop()
 		}
 	}
 	eng.Stop()
 	_ = server.Close()
-	logger.Printf("STOP")
+	infof("STOP")
 }
 
 var lanDiscoveryRetry = time.Second
@@ -207,14 +210,14 @@ func resolveRouterURL(routerFlag string, logger *log.Logger) string {
 		return v
 	}
 	if v := strings.TrimSpace(os.Getenv("AWGM_ROUTER_URL")); v != "" {
-		logger.Printf("ROUTER url=%s (AWGM_ROUTER_URL)", v)
+		logger.Printf("INFO ROUTER url=%s (AWGM_ROUTER_URL)", v)
 		return v
 	}
 	port, err := parseServerPort(DefaultPanelSettingsPath)
 	if err != nil {
-		logger.Printf("ROUTER url=http://127.0.0.1:%d (settings %s: %v)", DefaultPanelPort, DefaultPanelSettingsPath, err)
+		logger.Printf("WARN ROUTER url=http://127.0.0.1:%d (settings %s: %v)", DefaultPanelPort, DefaultPanelSettingsPath, err)
 	} else {
-		logger.Printf("ROUTER url=http://127.0.0.1:%d (settings %s)", port, DefaultPanelSettingsPath)
+		logger.Printf("INFO ROUTER url=http://127.0.0.1:%d (settings %s)", port, DefaultPanelSettingsPath)
 	}
 	if port > 0 {
 		return fmt.Sprintf("http://127.0.0.1:%d", port)
@@ -269,7 +272,7 @@ func discoverLANBridges(ctx context.Context, client lanDiscoveryClient, logger *
 		if err == nil {
 			err = fmt.Errorf("no private up LAN bridge interfaces")
 		}
-		logger.Printf("LAN discovery attempt=%d error=%q retry_in=%s", attempt, err, delay)
+		logger.Printf("INFO LAN discovery attempt=%d error=%q retry_in=%s", attempt, err, delay)
 		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():

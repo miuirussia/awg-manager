@@ -8321,6 +8321,8 @@
 	"autolist_cfg_tunnel_probe_hint": "Проверяет, что сайт открывается через выбранный туннель.",
 	"autolist_cfg_udp": "Проверять UDP",
 	"autolist_cfg_udp_hint": "Проверять ещё и UDP (STUN/TURN) на любых портах. Иначе — только TCP/443 и DNS/53.",
+	"autolist_cfg_journal_debug": "Логи отладки в Журнале",
+	"autolist_cfg_journal_debug_hint": "Добавляет расширенные записи Autolist в Журнал AWGM с уровнем DEBUG. Полные логи всегда сохраняются в файле /tmp/awgmautolist.log.",
 	"autolist_cfg_exclude_domains": "Исключённые домены",
 	"autolist_cfg_exclude_domains_hint": "Эти домены не проверяются и не добавляются. По одному в строке или через запятую.",
 	"autolist_cfg_exclude_rulesets": "Исключения rule-set / geosite (готовые списки доменов и IP)",

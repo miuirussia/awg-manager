@@ -15,7 +15,7 @@ func TestDefaults(t *testing.T) {
 	}
 	cfg := store.Config()
 	if cfg.WANCheckURL != DefaultWANCheckURL || !cfg.TunnelProbe || cfg.AutoAdd ||
-		cfg.WANMonitorEnabled || cfg.UDPEnabled {
+		cfg.WANMonitorEnabled || cfg.UDPEnabled || cfg.JournalDebug {
 		t.Fatalf("unexpected defaults: %+v", cfg)
 	}
 	if cfg.AddsPerHour != DefaultAddsPerHour {
@@ -150,7 +150,7 @@ func TestLegacyResolverMigratesOnlyInMemoryUntilSave(t *testing.T) {
 
 func TestLoadRejectsInvalidKnownFields(t *testing.T) {
 	for _, input := range []string{
-		`null`, `[]`, `{"autoAdd":null}`, `{"autoAdd":"yes"}`,
+		`null`, `[]`, `{"autoAdd":null}`, `{"autoAdd":"yes"}`, `{"journalDebug":null}`,
 		`{"wanCheckUrl":"file:///etc/passwd"}`, `{"excludeDomains":["bad/name"]}`,
 	} {
 		path := filepath.Join(t.TempDir(), "config.json")
@@ -172,5 +172,24 @@ func TestConfigSnapshotOwnsSlices(t *testing.T) {
 	cfg.ExcludeDomains[0] = "changed.example"
 	if got := store.Config().ExcludeDomains; !reflect.DeepEqual(got, []string{"example.com"}) {
 		t.Fatalf("snapshot mutated store: %v", got)
+	}
+}
+
+func TestJournalDebugPatch(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	store := NewStore(path)
+	cfg, err := store.Patch([]byte(`{"journalDebug":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.JournalDebug || !store.Config().JournalDebug {
+		t.Fatal("journalDebug=true was not applied")
+	}
+	reloaded := NewStore(path)
+	if _, err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if !reloaded.Config().JournalDebug {
+		t.Fatal("journalDebug=true was not persisted")
 	}
 }

@@ -16,6 +16,7 @@ const baseConfig: AutolistConfig = {
 	excludeDomains: [],
 	excludeRuleSets: [],
 	udpEnabled: false,
+	journalDebug: false,
 	addsPerHour: 50,
 };
 

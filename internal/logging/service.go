@@ -108,7 +108,14 @@ func (s *Service) AppLog(level Level, group, subgroup, action, target, message s
 	// levelForClashType в пересылке журнала движка. Разойдясь, отсев
 	// поставщика и отсев записи дали бы худший исход — строку, отброшенную
 	// поставщиком, но нужную пользователю, и ни один тест этого не показал бы.
-	if !s.Visible(level) {
+	if level == LevelDebug && group == GroupRouting && subgroup == SubAutolist {
+		// У Autolist отдельный journalDebug в его config.json; до этой точки
+		// DEBUG уже разрешён sync. Глобальный INFO не должен отменять это решение,
+		// но общий выключатель журнала сохраняет приоритет.
+		if !s.IsEnabled() {
+			return
+		}
+	} else if !s.Visible(level) {
 		return
 	}
 	// Every address is reduced to scheme and host here, once, after the

@@ -409,12 +409,12 @@ func (e *Engine) beginAttempt(key string, manual bool) (*attempt, bool) {
 			return nil, false
 		}
 	} else if exists && existing.State != model.CandidateChecking {
-		e.logf("suspect skipped, candidate %s: %s", existing.State, key)
+		e.debugf("suspect skipped, candidate %s: %s", existing.State, key)
 		return nil, false
 	}
 	if previous, busy := e.active[key]; busy {
 		if !manual {
-			e.logf("duplicate suspect dropped: %s", key)
+			e.debugf("duplicate suspect dropped: %s", key)
 			return nil, false
 		}
 		previous.cancel()
@@ -452,7 +452,7 @@ func (e *Engine) invalidateLocked(reason string) {
 			}
 		}
 	})
-	e.logf("decision generation invalidated: %s", reason)
+	e.debugf("decision generation invalidated: %s", reason)
 }
 
 // process runs the decision pipeline for one suspect:
@@ -521,7 +521,7 @@ func (e *Engine) process(suspect capture.Suspect, recheckState model.CandidateSt
 		return // paused capture must not create deferred work
 	}
 	cfg := e.deps.Config.Config()
-	e.logf("%s suspect %s reason=%s", att.id, describeTarget(target), suspect.Reason)
+	e.debugf("%s suspect %s reason=%s", att.id, describeTarget(target), suspect.Reason)
 
 	// Coverage and exclusions run before any active check; an error or an
 	// already covered or excluded target never becomes a candidate.
@@ -537,11 +537,11 @@ func (e *Engine) process(suspect capture.Suspect, recheckState model.CandidateSt
 	if err != nil {
 		cand.LastError = fmt.Sprintf("coverage: %v", err)
 		e.setLastError(fmt.Sprintf("%s coverage: %v", att.id, err))
-		e.logf("%s coverage error, no candidate: %v", att.id, err)
+		e.errorf("%s coverage error, no candidate: %v", att.id, err)
 		return
 	}
 	if cand.Coverage.Covered || cand.Coverage.Excluded {
-		e.logf("%s target covered=%v excluded=%v, no candidate", att.id, cand.Coverage.Covered, cand.Coverage.Excluded)
+		e.debugf("%s target covered=%v excluded=%v, no candidate", att.id, cand.Coverage.Covered, cand.Coverage.Excluded)
 		return
 	}
 
@@ -552,7 +552,7 @@ func (e *Engine) process(suspect capture.Suspect, recheckState model.CandidateSt
 	if err != nil {
 		cand.LastError = fmt.Sprintf("direct path: %v", err)
 		e.setLastError(fmt.Sprintf("%s direct path: %v", att.id, err))
-		e.logf("%s direct path error, no candidate: %v", att.id, err)
+		e.debugf("%s direct path error, no candidate: %v", att.id, err)
 		return
 	}
 
@@ -564,7 +564,7 @@ func (e *Engine) process(suspect capture.Suspect, recheckState model.CandidateSt
 	}
 	cand.Direct = probeEvidence(results.Direct)
 	cand.WAN = probeEvidence(results.WAN)
-	e.logf("%s direct=%s wan=%s outbound=%s interface=%s%s%s",
+	e.debugf("%s direct=%s wan=%s outbound=%s interface=%s%s%s",
 		att.id, results.Direct.Verdict, results.WAN.Verdict, directPath.Outbound, directPath.Interface,
 		probeLogDetail(results.Direct), probeLogDetail(results.WAN))
 	if results.Direct.Verdict != model.VerdictBlocked || results.WAN.Verdict != model.VerdictReachable {
@@ -598,7 +598,7 @@ func (e *Engine) process(suspect capture.Suspect, recheckState model.CandidateSt
 	}
 	if err != nil {
 		e.setLastError(fmt.Sprintf("%s tunnel interface: %v", att.id, err))
-		e.logf("%s tunnel unavailable, candidate waits without tunnel proof", att.id)
+		e.debugf("%s tunnel unavailable, candidate waits without tunnel proof", att.id)
 		cand.Tunnel = model.CheckEvidence{Verdict: model.VerdictError, Detail: err.Error(), CheckedAt: time.Now()}
 		e.publishDecision(att, key, cand, model.CandidateWaiting, true)
 		return
@@ -617,7 +617,7 @@ func (e *Engine) process(suspect capture.Suspect, recheckState model.CandidateSt
 		return
 	}
 	cand.Tunnel = probeEvidence(tunnelResult)
-	e.logf("%s tunnel=%s interface=%s%s", att.id, tunnelResult.Verdict, tunnel.Interface, probeLogDetail(tunnelResult))
+	e.debugf("%s tunnel=%s interface=%s%s", att.id, tunnelResult.Verdict, tunnel.Interface, probeLogDetail(tunnelResult))
 	if tunnelResult.Verdict == model.VerdictBlocked {
 		e.discardCandidate(att, key)
 		return
@@ -650,8 +650,20 @@ func (e *Engine) setLastErrorLocked(message string) {
 }
 
 func (e *Engine) logf(format string, args ...any) {
+	e.logAt("INFO", format, args...)
+}
+
+func (e *Engine) debugf(format string, args ...any) {
+	e.logAt("DEBUG", format, args...)
+}
+
+func (e *Engine) errorf(format string, args ...any) {
+	e.logAt("ERROR", format, args...)
+}
+
+func (e *Engine) logAt(level, format string, args ...any) {
 	if e.deps.Logger != nil {
-		e.deps.Logger.Printf(format, args...)
+		e.deps.Logger.Printf(level+" "+format, args...)
 	}
 }
 

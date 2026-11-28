@@ -218,6 +218,8 @@ export interface AutolistConfig {
 	excludeRuleSets?: string[];
 	/** Наблюдать STUN/TURN на любых UDP-портах. */
 	udpEnabled: boolean;
+	/** Передавать DEBUG Autolist в общий журнал; файл всегда остаётся полным. */
+	journalDebug: boolean;
 	/**
 	 * Бюджет добавлений за скользящий час, 1..500 (default 50). Статус
 	 * показывает его как addsLimit; 0/unlimited бэкенд не поддерживает.

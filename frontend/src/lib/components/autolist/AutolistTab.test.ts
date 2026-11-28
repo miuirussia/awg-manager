@@ -95,6 +95,7 @@ const fullConfig: AutolistConfig = {
 	excludeDomains: [],
 	excludeRuleSets: [],
 	udpEnabled: false,
+	journalDebug: false,
 	addsPerHour: 50,
 };
 
@@ -820,7 +821,7 @@ describe('AutolistTab — settings', () => {
 		expect((save.mock.calls[0][0]).tunnelProbe).toBe(true);
 	});
 
-	it('saves exactly the ten 0.9.3 settings — without the removed verbose flag — and closes the modal on success', async () => {
+	it('saves the eleven supported settings and closes the modal on success', async () => {
 		vi.spyOn(api, 'getAutolistStatus').mockResolvedValue(runningStatus);
 		vi.spyOn(api, 'getAutolistConfig').mockResolvedValue(fullConfig);
 		emptyResources();
@@ -830,6 +831,9 @@ describe('AutolistTab — settings', () => {
 		await fireEvent.click(await screen.findByRole('button', { name: m.autolist_settings() }));
 		const wanInput = await screen.findByLabelText(m.autolist_cfg_wan_url());
 		await fireEvent.input(wanInput, { target: { value: 'https://example.com/health' } });
+		const debugToggle = screen.getByRole('checkbox', { name: m.autolist_cfg_journal_debug() });
+		expect((debugToggle as HTMLInputElement).checked).toBe(false);
+		await fireEvent.click(debugToggle);
 		await fireEvent.click(screen.getByRole('button', { name: m.common_save() }));
 
 		await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(1));
@@ -839,6 +843,7 @@ describe('AutolistTab — settings', () => {
 			'autoAdd',
 			'excludeDomains',
 			'excludeRuleSets',
+			'journalDebug',
 			'resolveVia',
 			'targetInterface',
 			'tunnelProbe',
@@ -848,6 +853,7 @@ describe('AutolistTab — settings', () => {
 		]);
 		expect(sent.wanCheckUrl).toBe('https://example.com/health');
 		expect(sent.addsPerHour).toBe(50);
+		expect(sent.journalDebug).toBe(true);
 		await vi.waitFor(() => expect(screen.queryByRole('button', { name: m.common_save() })).toBeNull());
 	});
 

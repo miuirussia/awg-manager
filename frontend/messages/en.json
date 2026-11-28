@@ -7927,6 +7927,8 @@
 	"autolist_cfg_tunnel_probe_hint": "Checks that the site opens through the selected tunnel.",
 	"autolist_cfg_udp": "Check UDP",
 	"autolist_cfg_udp_hint": "Also check UDP (STUN/TURN) on any port. Otherwise only TCP/443 and DNS/53.",
+	"autolist_cfg_journal_debug": "Debug logs in Journal",
+	"autolist_cfg_journal_debug_hint": "Adds detailed Autolist entries to the AWGM Journal at DEBUG level. Full logs are always written to /tmp/awgmautolist.log.",
 	"autolist_cfg_exclude_domains": "Excluded domains",
 	"autolist_cfg_exclude_domains_hint": "These domains are never checked or added. One per line or comma-separated.",
 	"autolist_cfg_exclude_rulesets": "Rule-set / geosite exclusions (ready lists of domains and IPs)",

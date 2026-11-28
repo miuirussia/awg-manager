@@ -112,6 +112,7 @@ type Server struct {
 	geoData                    *geodata.GeoDataStore
 	zapretService              *zapret.Service
 	autolistService            *autolistdetect.Service
+	autolistLogHandler         *api.AutolistHandler
 	autolistRemovedBackupProbe func(ctx context.Context) (bool, time.Time, error)
 	orch                       *orchestrator.Orchestrator
 	bus                        *events.Bus
@@ -624,6 +625,11 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
 
+	if s.autolistLogHandler != nil {
+		s.autolistLogHandler.StartLogWatcher()
+		s.AddShutdownHook(s.autolistLogHandler.StopLogWatcher)
+	}
+
 	if s.warpScout != nil {
 		s.warpScout.Start()
 	}
@@ -690,6 +696,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	if s.warpScout != nil {
 		s.warpScout.Stop()
+	}
+
+	if s.autolistLogHandler != nil {
+		s.autolistLogHandler.StopLogWatcher()
 	}
 
 	if s.mcpCallsCancel != nil {

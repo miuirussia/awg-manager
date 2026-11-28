@@ -221,7 +221,7 @@ func (e *Engine) runCaptureAction(action captureAction) {
 	e.mu.Unlock()
 	e.commitMu.Unlock()
 	if stale {
-		e.logf("capture action skipped: decision is stale (wantPaused=%v gen=%d)", action.pause, action.gen)
+		e.debugf("capture action skipped: decision is stale (wantPaused=%v gen=%d)", action.pause, action.gen)
 		return
 	}
 
@@ -244,7 +244,7 @@ func (e *Engine) runCaptureAction(action captureAction) {
 			e.captureRunning = false
 			e.mu.Unlock()
 		}
-		e.logf("capture %s failed after %dms: %s", verb, took, err)
+		e.errorf("capture %s failed after %dms: %s", verb, took, err)
 		return
 	}
 	if action.pause {

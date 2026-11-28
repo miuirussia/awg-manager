@@ -76,6 +76,7 @@ describe('Autolist client', () => {
 			excludeDomains: [],
 			excludeRuleSets: [],
 			udpEnabled: false,
+			journalDebug: false,
 		});
 		const written = JSON.parse(capturedBody);
 		expect(written.path).toBe('/config');

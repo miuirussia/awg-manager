@@ -499,3 +499,22 @@ func TestService_AppLogKeepsNoURLSecret(t *testing.T) {
 		t.Fatalf("the host must stay for diagnosis: %q", all)
 	}
 }
+
+func TestAutolistDebugLevelIsIndependent(t *testing.T) {
+	settings := &mockSettings{enabled: true, logLevel: "info"}
+	svc := NewService(settings)
+	defer svc.Stop()
+
+	svc.AppLog(LevelDebug, GroupRouting, SubAutolist, "autolist", "", "allowed by journalDebug")
+	svc.AppLog(LevelDebug, GroupRouting, SubSingboxRouter, "debug", "", "blocked by global INFO")
+	logs, total := svc.GetLogs(BucketApp, "", "", "", time.Time{}, 10, 0)
+	if total != 1 || len(logs) != 1 || logs[0].Subgroup != SubAutolist || logs[0].Level != string(LevelDebug) {
+		t.Fatalf("logs=%v total=%d", logs, total)
+	}
+
+	settings.enabled = false
+	svc.AppLog(LevelDebug, GroupRouting, SubAutolist, "autolist", "", "master switch stays authoritative")
+	if _, total := svc.GetLogs(BucketApp, "", "", "", time.Time{}, 10, 0); total != 1 {
+		t.Fatalf("disabled logging added an entry, total=%d", total)
+	}
+}

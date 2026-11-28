@@ -1646,6 +1646,18 @@
 							ariaLabel={m.autolist_cfg_udp()}
 						/>
 					</div>
+					<div class="flex items-start justify-between gap-3">
+						<span class="flex flex-col gap-1">
+							<span class="text-sm font-medium">{m.autolist_cfg_journal_debug()}</span>
+							<span class="text-xs opacity-70">{m.autolist_cfg_journal_debug_hint()}</span>
+						</span>
+						<Toggle
+							checked={cfgDraft.journalDebug}
+							controlled
+							onchange={(v) => (cfgDraft = { ...cfgDraft, journalDebug: v })}
+							ariaLabel={m.autolist_cfg_journal_debug()}
+						/>
+					</div>
 				</section>
 
 				<section class="flex flex-col gap-4">

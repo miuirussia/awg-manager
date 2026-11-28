@@ -25,9 +25,10 @@ type AutolistHandler struct {
 	// nil — поле статуса остаётся false. Ошибка чтения снимка не валит
 	// статус: трактуется как «снимка нет», факт уходит в журнал.
 	hasRemovedBackup func(ctx context.Context) (bool, time.Time, error)
-	// logSync доталкивает журнал сателлита (/tmp/awgmautolist.log) в общий
-	// журнал панели; тикает из Status (polling уже периодический).
-	logSync *autolistLogSync
+	// logSync доталкивает журнал сателлита (/tmp/awgmautolist.log) по файловым
+	// событиям; Status остаётся дополнительным безопасным триггером.
+	logSync  *autolistLogSync
+	logWatch autolistLogWatcher
 }
 
 func NewAutolistHandler(svc *autolistdetect.Service) *AutolistHandler {
@@ -43,7 +44,32 @@ func (h *AutolistHandler) SetHasRemovedBackupProbe(fn func(ctx context.Context) 
 
 // SetLogger подключает журнал для диагностики отказов проверки снимка.
 func (h *AutolistHandler) SetLogger(appLogger logging.AppLogger) {
-	h.log = logging.NewScopedLogger(appLogger, logging.GroupRouting, logging.SubSingboxRouter)
+	h.log = logging.NewScopedLogger(appLogger, logging.GroupRouting, logging.SubAutolist)
+}
+
+func (h *AutolistHandler) StartLogWatcher() {
+	if h.logWatch != nil || h.logSync == nil {
+		return
+	}
+	path := h.logSync.path
+	if path == "" {
+		path = autolistLogDefaultPath
+	}
+	watcher := newAutolistLogWatcher(path, h.syncAutolistLog)
+	if err := watcher.start(); err != nil {
+		if h.log != nil {
+			h.log.Warn("autolist-log-watch", "", err.Error())
+		}
+		return
+	}
+	h.logWatch = watcher
+}
+
+func (h *AutolistHandler) StopLogWatcher() {
+	if h.logWatch != nil {
+		h.logWatch.stop()
+		h.logWatch = nil
+	}
 }
 
 // withRemovedBackup помечает статус флагом снимка; любая ошибка чтения —

@@ -581,6 +581,7 @@ func (s *Server) registerRoutingRoutes(mux *http.ServeMux, h *routeHandlers) {
 		// свой файл данных), сателлит о нём не знает.
 		autolistHandler.SetLogger(h.appLog)
 		autolistHandler.SetHasRemovedBackupProbe(s.autolistRemovedBackupProbe)
+		s.autolistLogHandler = autolistHandler
 		mux.HandleFunc("/api/autolist/status", h.guarded(autolistHandler.Status))
 		mux.HandleFunc("/api/autolist/control", h.expertGuarded(autolistHandler.Control))
 		mux.HandleFunc("/api/autolist/install", h.expertGuarded(autolistHandler.Install))

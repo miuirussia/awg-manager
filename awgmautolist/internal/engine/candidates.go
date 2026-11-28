@@ -23,7 +23,7 @@ func (e *Engine) publishDecision(att *attempt, key string, cand model.Candidate,
 	e.commitMu.Lock()
 	defer e.commitMu.Unlock()
 	if !att.valid(e) {
-		e.logf("%s decision stale, no write for %s", att.id, key)
+		e.debugf("%s decision stale, no write for %s", att.id, key)
 		return false
 	}
 	cand.State = state
@@ -131,7 +131,7 @@ func (e *Engine) autoAdd(att *attempt, cand *model.Candidate, directPath awgm.Di
 		// budget exactly once.
 		cand.LastError = err.Error()
 		e.setLastError(fmt.Sprintf("%s writer: %v", att.id, err))
-		e.logf("%s auto-add write failed: %v", att.id, err)
+		e.errorf("%s auto-add write failed: %v", att.id, err)
 		failed := *cand
 		failed.TargetInterface = iface
 		failed.TargetOutbound = result.Outbound
@@ -174,7 +174,7 @@ func (e *Engine) autoAdd(att *attempt, cand *model.Candidate, directPath awgm.Di
 	if result.Persisted {
 		e.logf("%s auto-added %s via %s (%s)", att.id, cand.ID, iface, result.Outbound)
 	} else {
-		e.logf("%s auto-add was a duplicate, no budget spent", att.id)
+		e.debugf("%s auto-add was a duplicate, no budget spent", att.id)
 	}
 	return stored
 }
@@ -490,7 +490,7 @@ func (e *Engine) recheckAdded(ctx context.Context, id string, cand model.Candida
 		}
 	}
 	tunnel := probeEvidence(tunnelResult)
-	e.logf("recheck %s direct=%s%s wan=%s%s tunnel=%s%s", id,
+	e.debugf("recheck %s direct=%s%s wan=%s%s tunnel=%s%s", id,
 		results.Direct.Verdict, probeLogDetail(results.Direct), results.WAN.Verdict, probeLogDetail(results.WAN), tunnelResult.Verdict, probeLogDetail(tunnelResult))
 	updated := cand
 	updated.Direct = probeEvidence(results.Direct)

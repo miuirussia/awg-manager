@@ -2,8 +2,10 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/hoaxisr/awg-manager/internal/logging"
@@ -12,6 +14,7 @@ import (
 // autolistLogDefaultPath — журнал сателлита autolist (RAMLog в /tmp на роутере,
 // см. awgmautolist/internal/logging). Панель его не пишет — только читает.
 const autolistLogDefaultPath = "/tmp/awgmautolist.log"
+const autolistConfigDefaultPath = "/opt/etc/awgmautolist/config.json"
 
 const (
 	// autolistLogImportBytes/autolistLogImportLines — потолки ПЕРВОГО импорта:
@@ -21,12 +24,18 @@ const (
 )
 
 // autolistLogSync — pull-based tail журнала сателлита в app-журнал панели.
-// Sync вызывается из Status (его опрос и так периодический), состояние
+// Вызывается по файловым событиям; Status остаётся fallback. Состояние
 // (offset + незавершённый хвост) живёт между вызовами под мьютексом.
 // Ошибки файла проглатываются: нет файла — нет событий, /status не падает.
+type autolistLogWatcher interface {
+	start() error
+	stop()
+}
+
 type autolistLogSync struct {
-	// path — seam только для тестов; пусто — autolistLogDefaultPath.
-	path string
+	// path/configPath — seams только для тестов; пустые — рабочие пути.
+	path       string
+	configPath string
 
 	mu      sync.Mutex
 	started bool   // первичный импорт выполнен
@@ -34,9 +43,47 @@ type autolistLogSync struct {
 	pending []byte // незавершённая строка (хвост без '\n')
 }
 
-// sync доталкивает файл до текущего конца, отправляя каждую новую ПОЛНУЮ
-// строку через log.Info("autolist", "", line). action="autolist" — идентификатор
-// источника в общем журнале; дальше события фильтрует и публикует панель.
+func parseAutolistLog(line string) (logging.Level, string, bool) {
+	parts := strings.SplitN(line, " ", 5)
+	if len(parts) != 5 {
+		return "", "", false
+	}
+	var level logging.Level
+	switch parts[3] {
+	case "DEBUG":
+		level = logging.LevelDebug
+	case "INFO":
+		level = logging.LevelInfo
+	case "FULL":
+		level = logging.LevelFull
+	case "WARN":
+		level = logging.LevelWarn
+	case "ERROR", "FATAL":
+		level = logging.LevelError
+	default:
+		return "", "", false
+	}
+	return level, parts[0] + " " + parts[1] + " " + parts[2] + " " + parts[4], true
+}
+
+func (s *autolistLogSync) debugEnabled() bool {
+	path := s.configPath
+	if path == "" {
+		path = autolistConfigDefaultPath
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var cfg struct {
+		JournalDebug bool `json:"journalDebug"`
+	}
+	return json.Unmarshal(data, &cfg) == nil && cfg.JournalDebug
+}
+
+// sync доталкивает файл до текущего конца. В общий журнал уходят только
+// полные строки с явным уровнем; DEBUG дополнительно управляется journalDebug.
+// action="autolist" — идентификатор источника; дальше события публикует панель.
 func (s *autolistLogSync) sync(log *logging.ScopedLogger) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -74,6 +121,15 @@ func (s *autolistLogSync) sync(log *logging.ScopedLogger) {
 		return // новых байт нет; незавершённый хвост ждёт в pending
 	}
 
+	debugEnabled := s.debugEnabled()
+	emit := func(line string) {
+		level, message, ok := parseAutolistLog(line)
+		if !ok || (level == logging.LevelDebug && !debugEnabled) || log == nil {
+			return
+		}
+		log.At(level, "autolist", "", message)
+	}
+
 	chunk := make([]byte, size-s.offset)
 	n, err := f.ReadAt(chunk, s.offset)
 	if err != nil && err != io.EOF {
@@ -102,8 +158,8 @@ func (s *autolistLogSync) sync(log *logging.ScopedLogger) {
 		merged = merged[i+1:]
 		if first {
 			lines = append(lines, line) // потолок строк применим ниже, к хвосту
-		} else if log != nil {
-			log.Info("autolist", "", line)
+		} else {
+			emit(line)
 		}
 	}
 	if first {
@@ -111,9 +167,7 @@ func (s *autolistLogSync) sync(log *logging.ScopedLogger) {
 			lines = lines[len(lines)-autolistLogImportLines:]
 		}
 		for _, line := range lines {
-			if log != nil {
-				log.Info("autolist", "", line)
-			}
+			emit(line)
 		}
 	}
 	s.pending = append(s.pending[:0], merged...)
